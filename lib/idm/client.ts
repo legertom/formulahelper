@@ -1,6 +1,6 @@
 import { localValidate } from "./local-validator";
 
-const DEFAULT_BASE = "https://formulastudio.net";
+const DEFAULT_BASE = "https://www.formulastudio.net";
 
 function baseUrl(): string {
   return process.env.IDM_API_BASE?.replace(/\/$/, "") || DEFAULT_BASE;

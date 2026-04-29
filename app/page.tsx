@@ -94,10 +94,12 @@ export default function Page() {
 
   const onFormatted = useCallback(
     (formatted: string) => {
+      // push the PRE-format formula first so the user can always restore
+      history.push(formula, "edit");
       setFormula(formatted);
       history.push(formatted, "format");
     },
-    [history],
+    [formula, history],
   );
 
   const onRestoreHistory = useCallback(

@@ -47,6 +47,10 @@ const COLOR: Record<Token["kind"], string> = {
   punct: "text-muted-foreground/70",
 };
 
+function stripStringLiterals(src: string): string {
+  return src.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+}
+
 function tokenize(src: string): Token[] {
   const tokens: Token[] = [];
   let m: RegExpExecArray | null;
@@ -91,12 +95,26 @@ export function FormulaEditor({
         setFormatErr(json?.error ?? `HTTP ${res.status}`);
         return;
       }
-      onFormatted(json.formula);
+      const formatted: string = json.formula;
+      const stripped = stripStringLiterals(formatted);
+      const inputStripped = stripStringLiterals(value);
+      const introducedParens =
+        (stripped.includes("(") && !inputStripped.includes("(")) ||
+        (stripped.includes(")") && !inputStripped.includes(")"));
+      if (introducedParens) {
+        setFormatErr("formatter returned parens (invalid IDM); not applied");
+        return;
+      }
+      if (formatted.trim() === value.trim()) {
+        setFormatErr("already formatted");
+        return;
+      }
+      onFormatted(formatted);
     } catch (err) {
       setFormatErr(err instanceof Error ? err.message : "format failed");
     } finally {
       setFormatting(false);
-      setTimeout(() => setFormatErr(null), 2500);
+      setTimeout(() => setFormatErr(null), 3000);
     }
   }
 

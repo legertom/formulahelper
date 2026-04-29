@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Formula Helper
 
-## Getting Started
+AI-assisted builder and explainer for [IDM (Identity Management) formulas](https://formulastudio.net/api/instructions).
 
-First, run the development server:
+Describe a rule in plain English and the assistant drafts, validates, and tests the formula. Paste an existing formula and ask for a plain-English explanation. The model invokes the deterministic IDM toolchain (validate / lint / format / test / compile-group-rules) at [formulastudio.net](https://formulastudio.net) as tool calls — it never just guesses.
 
-```bash
+## Stack
+
+- **Next.js 16** App Router (Turbopack) on Node.js runtime
+- **TypeScript 5**, **Tailwind CSS v4**
+- **AI SDK v6** (`ai`, `@ai-sdk/react`) — `streamText`, `useChat`, `DefaultChatTransport`
+- **Vercel AI Gateway** — default model `anthropic/claude-sonnet-4.6`
+- **Zod** for tool input schemas
+- Hosted on **Vercel** (Fluid Compute)
+
+## Local development
+
+```sh
+cp .env.local.example .env.local
+# add your AI_GATEWAY_API_KEY (or run `vercel link && vercel env pull` to inherit project env)
+
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploying to Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```sh
+npm i -g vercel       # if you don't have it
+vercel link           # link to a project (or create one)
+vercel deploy         # preview
+vercel deploy --prod  # production
+```
 
-## Learn More
+In production, OIDC handles AI Gateway auth automatically — no key needed.
 
-To learn more about Next.js, take a look at the following resources:
+## Environment variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Var | Purpose |
+| --- | --- |
+| `AI_GATEWAY_API_KEY` | Required for local dev. Not needed in Vercel deployments (OIDC). |
+| `IDM_MODEL` | Optional. AI Gateway model string. Default: `anthropic/claude-sonnet-4.6`. |
+| `IDM_API_BASE` | Optional. IDM API root. Default: `https://formulastudio.net`. |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project layout
 
-## Deploy on Vercel
+```
+app/
+  api/chat/route.ts       streamText + tools, stopWhen stepCountIs(15)
+  api/idm-test/route.ts   server proxy for the test-cases panel
+  about/page.tsx          architecture + credits
+  page.tsx                split UI: editor + tests + chat
+components/
+  chat-panel.tsx          useChat + tool part rendering
+  formula-editor.tsx      textarea + "Explain in plain English"
+  test-cases.tsx          per-row data + expected, runs against /api/idm-test
+lib/idm/
+  client.ts               fetch wrappers w/ live → local-validator fallback
+  local-validator.ts      spec-driven backup validator
+  spec.ts                 IDM function catalog + system prompt
+  tools.ts                AI SDK tool() definitions
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Credits
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+IDM language + validator/formatter/test-runner: [legertom/formulastudio](https://github.com/legertom/formulastudio).

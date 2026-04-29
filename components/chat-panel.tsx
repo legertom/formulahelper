@@ -15,11 +15,7 @@ import {
   ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "@/components/ai-elements/message";
+import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import {
   Tool,
   ToolContent,
@@ -42,11 +38,11 @@ function extractFormulaFromText(text: string): string | null {
 }
 
 const TOOL_LABEL: Record<string, string> = {
-  "tool-validate_formula": "Validate formula",
-  "tool-lint_formula": "Lint formula",
-  "tool-format_formula": "Format formula",
-  "tool-test_formula": "Run tests",
-  "tool-compile_group_rules": "Compile group rules",
+  "tool-validate_formula": "validate",
+  "tool-lint_formula": "lint",
+  "tool-format_formula": "format",
+  "tool-test_formula": "test",
+  "tool-compile_group_rules": "compile rules",
 };
 
 export type ChatPanelHandle = {
@@ -95,41 +91,36 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
   }, [messages, onFormulaSuggested]);
 
   const busy = status === "submitted" || status === "streaming";
-
-  const statusDot =
+  const dotColor =
     status === "streaming"
-      ? "bg-amber-500 animate-pulse"
+      ? "bg-[var(--amber)] animate-pulse"
       : status === "submitted"
-        ? "bg-blue-500 animate-pulse"
+        ? "bg-[var(--lime)] animate-pulse"
         : status === "error"
-          ? "bg-red-500"
-          : "bg-emerald-500";
+          ? "bg-[var(--destructive)]"
+          : "bg-[var(--lime)]";
 
   return (
-    <div className="flex flex-col h-full rounded-xl border bg-card overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/40">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            AI assistant
-          </span>
-          <span className="text-[10px] text-muted-foreground/70">claude-sonnet-4.6</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className={`h-1.5 w-1.5 rounded-full ${statusDot}`} aria-hidden />
-          <span className="text-[11px] text-muted-foreground capitalize">
+    <div className="flex flex-col h-full border border-border bg-card overflow-hidden">
+      <div className="flex items-center h-8 border-b border-border bg-muted/30 px-3 text-[11px] gap-2">
+        <span className="text-[var(--lime)]">▸</span>
+        <span className="text-muted-foreground">assistant</span>
+        <span className="text-border">│</span>
+        <span className="text-muted-foreground/60">claude-sonnet-4.6</span>
+        <span className="ml-auto flex items-center gap-1.5">
+          <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} aria-hidden />
+          <span className="text-muted-foreground capitalize">
             {status === "streaming" ? "thinking" : status === "submitted" ? "sending" : status}
           </span>
-        </div>
+        </span>
       </div>
 
-      <Conversation className="flex-1">
+      <Conversation className="flex-1 [&_*]:font-sans-prose">
         <ConversationContent>
           {messages.length === 0 && (
             <ConversationEmptyState
               title="Ask anything about IDM formulas"
-              description={
-                "Try: “Senior if grad year is 2026, Junior if 2027, otherwise Other.” Or paste a formula in the editor and click Explain."
-              }
+              description="“Senior if grad year is 2026, Junior if 2027, otherwise Other.” Or paste a formula in the editor and click explain."
             />
           )}
 
@@ -150,7 +141,7 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
           ))}
 
           {error && (
-            <div className="text-xs rounded-md p-2 bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/40 dark:border-red-900 dark:text-red-300">
+            <div className="text-[11px] font-mono p-2 border border-[var(--destructive)] text-[var(--destructive)] bg-[var(--destructive)]/10">
               {error.message}
             </div>
           )}
@@ -166,9 +157,10 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
             setInput("");
           }
         }}
-        className="border-t p-3 bg-muted/30"
+        className="border-t border-border bg-muted/20 p-2"
       >
-        <div className="flex gap-2 rounded-lg border bg-background focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-foreground/30 transition-shadow">
+        <div className="flex items-end gap-1.5 border border-border focus-within:border-[var(--lime)] bg-background transition">
+          <span className="px-2.5 py-2.5 text-[var(--lime)] text-[12px] select-none">$</span>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -181,9 +173,9 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
                 }
               }
             }}
-            placeholder="Describe a rule, paste a formula, ask why…"
+            placeholder="describe a rule, paste a formula, ask why…"
             rows={1}
-            className="flex-1 min-h-[36px] max-h-32 text-sm px-3 py-2 bg-transparent resize-none focus:outline-none placeholder:text-muted-foreground/60"
+            className="flex-1 min-h-[36px] max-h-32 text-[12.5px] py-2 pl-0 pr-2 bg-transparent resize-none focus:outline-none placeholder:text-muted-foreground/50 font-mono"
             disabled={busy}
           />
           <div className="p-1 flex items-end">
@@ -191,17 +183,17 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
               <button
                 type="button"
                 onClick={stop}
-                className="h-8 px-3 text-xs rounded-md bg-muted text-foreground hover:bg-muted/80 transition"
+                className="h-7 px-2.5 text-[11px] border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition"
               >
-                Stop
+                stop
               </button>
             ) : (
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className="h-8 px-3 text-xs rounded-md bg-foreground text-background disabled:opacity-40 hover:opacity-90 transition font-medium"
+                className="h-7 px-2.5 text-[11px] bg-[var(--lime)] text-background hover:opacity-90 disabled:opacity-30 transition font-medium"
               >
-                Send ↵
+                send ↵
               </button>
             )}
           </div>
@@ -221,7 +213,7 @@ function ToolPartView({ part }: { part: ToolUIPart | DynamicToolUIPart }) {
   const hasError = part.state === "output-error";
 
   return (
-    <Tool defaultOpen={hasError}>
+    <Tool defaultOpen={hasError} className="font-mono">
       {isDynamic ? (
         <ToolHeader type="dynamic-tool" state={part.state} toolName={part.toolName} title={friendly} />
       ) : (
@@ -233,7 +225,7 @@ function ToolPartView({ part }: { part: ToolUIPart | DynamicToolUIPart }) {
           <ToolOutput
             output={
               hasOutput ? (
-                <pre className="whitespace-pre-wrap break-words text-xs">
+                <pre className="whitespace-pre-wrap break-words text-[11px] text-foreground">
                   {JSON.stringify(part.output, null, 2)}
                 </pre>
               ) : undefined

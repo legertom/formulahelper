@@ -2,20 +2,27 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChatPanel, type ChatPanelHandle } from "@/components/chat-panel";
 import { ExamplesPanel } from "@/components/examples-panel";
 import { FieldsPanel } from "@/components/fields-panel";
 import { FormulaEditor } from "@/components/formula-editor";
 import { ResultStrip } from "@/components/result-strip";
 import { SampleDataPanel } from "@/components/sample-data-panel";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { SAMPLE_RECORD_JSON, EXAMPLE_FORMULAS } from "@/lib/idm/sample-data";
+
+type TabId = "data" | "fields" | "examples";
+
+const TABS: Array<{ id: TabId; label: string }> = [
+  { id: "data", label: "data" },
+  { id: "fields", label: "fields" },
+  { id: "examples", label: "examples" },
+];
 
 export default function Page() {
   const [formula, setFormula] = useState(EXAMPLE_FORMULAS[0].formula);
   const [dataJson, setDataJson] = useState(SAMPLE_RECORD_JSON);
+  const [activeTab, setActiveTab] = useState<TabId>("data");
   const chatRef = useRef<ChatPanelHandle>(null);
 
   const parsedData = useMemo<Record<string, unknown> | null>(() => {
@@ -34,91 +41,100 @@ export default function Page() {
   }, [formula]);
 
   const onInsertField = useCallback((path: string) => {
-    setFormula((current) => {
-      const insertion = current.includes("{{") ? path : `{{${path}}}`;
-      return current ? `${current} ${path}` : insertion;
-    });
+    setFormula((current) => (current ? `${current} ${path}` : `{{${path}}}`));
   }, []);
 
   return (
-    <main className="flex flex-col flex-1 min-h-0 bg-gradient-to-br from-zinc-50 via-white to-emerald-50/40 dark:from-zinc-950 dark:via-zinc-950 dark:to-emerald-950/30">
-      <header className="border-b bg-background/70 backdrop-blur-sm px-5 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 via-teal-500 to-blue-600 grid place-items-center text-white text-sm font-bold shadow-sm shadow-emerald-500/20">
-            ƒ
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-sm font-semibold tracking-tight text-foreground">
-              Formula Helper
-              <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-medium">
-                IDM · AI-assisted
-              </span>
-            </h1>
-            <p className="text-[11px] text-muted-foreground truncate">
-              Build, validate, and explain Identity Management formulas — backed by{" "}
-              <a
-                href="https://formulastudio.net"
-                className="underline decoration-dotted hover:text-foreground"
-                target="_blank"
-                rel="noreferrer"
-              >
-                formulastudio.net
-              </a>
-              .
-            </p>
-          </div>
+    <main className="flex flex-col flex-1 min-h-0 bg-background text-foreground relative">
+      <div className="absolute inset-0 bg-canvas-grid pointer-events-none" />
+
+      <header className="relative border-b border-border bg-background/90 backdrop-blur-[2px] px-4 h-11 flex items-center gap-3 text-[12px]">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[var(--lime)] text-base leading-none">ƒ</span>
+          <span className="font-medium text-foreground tracking-tight">formula-helper</span>
+          <span className="text-border">│</span>
+          <span className="text-muted-foreground/80 hidden sm:inline">idm studio</span>
+          <span className="text-border hidden sm:inline">│</span>
+          <span className="text-muted-foreground/60 hidden md:inline">
+            v0.1 · ai-sdk · gateway
+          </span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+
+        <span className="ml-auto flex items-center gap-1">
+          <a
+            href="https://formulastudio.net"
+            target="_blank"
+            rel="noreferrer"
+            className="h-7 px-2 hover:bg-muted text-muted-foreground hover:text-foreground transition border border-transparent hover:border-border"
+          >
+            studio ↗
+          </a>
           <a
             href="https://github.com/legertom/formulahelper"
             target="_blank"
             rel="noreferrer"
-            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 text-xs")}
+            className="h-7 px-2 hover:bg-muted text-muted-foreground hover:text-foreground transition border border-transparent hover:border-border"
           >
-            GitHub
+            github ↗
           </a>
           <Link
             href="/about"
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 text-xs")}
+            className="h-7 px-2 hover:bg-muted text-muted-foreground hover:text-foreground transition border border-transparent hover:border-border"
           >
-            About
+            about
           </Link>
-        </div>
+          <span className="mx-1 text-border">│</span>
+          <ThemeToggle />
+        </span>
       </header>
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-3 p-3">
-        <section className="flex flex-col gap-3 min-h-0">
-          <div className="flex-[1.1] min-h-[180px]">
+      <div className="relative flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+        <section className="flex flex-col min-h-0 border-r border-border">
+          <div className="flex-[1.15] min-h-[180px] border-b border-border">
             <FormulaEditor value={formula} onChange={setFormula} onAskExplain={onAskExplain} />
           </div>
+
           <ResultStrip formula={formula} data={parsedData ?? {}} />
-          <div className="flex-1 min-h-[220px]">
-            <Tabs defaultValue="data" className="h-full flex flex-col rounded-xl border bg-card overflow-hidden gap-0">
-              <TabsList className="rounded-none bg-muted/40 border-b h-9 p-0 px-1 justify-start gap-0">
-                <TabsTrigger value="data" className="text-xs h-8 rounded-none data-[state=active]:bg-background">
-                  Sample data
-                </TabsTrigger>
-                <TabsTrigger value="fields" className="text-xs h-8 rounded-none data-[state=active]:bg-background">
-                  Fields
-                </TabsTrigger>
-                <TabsTrigger value="examples" className="text-xs h-8 rounded-none data-[state=active]:bg-background">
-                  Examples
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="data" className="flex-1 min-h-0 m-0 outline-none">
+
+          <div className="flex-1 min-h-[220px] flex flex-col bg-card">
+            <div className="flex items-stretch h-8 border-b border-border bg-muted/20">
+              {TABS.map((t) => {
+                const active = activeTab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setActiveTab(t.id)}
+                    className={`px-3 text-[11.5px] uppercase tracking-wider border-r border-border transition relative ${
+                      active
+                        ? "text-foreground bg-background"
+                        : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/40"
+                    }`}
+                  >
+                    {t.label}
+                    {active && (
+                      <span className="absolute left-0 right-0 bottom-[-1px] h-[1px] bg-[var(--lime)]" />
+                    )}
+                  </button>
+                );
+              })}
+              <span className="ml-auto self-center pr-3 text-[10.5px] text-muted-foreground/50 hidden sm:inline">
+                tab to switch · click field to insert
+              </span>
+            </div>
+            <div className="flex-1 min-h-0">
+              {activeTab === "data" && (
                 <SampleDataPanel json={dataJson} onChange={setDataJson} />
-              </TabsContent>
-              <TabsContent value="fields" className="flex-1 min-h-0 m-0 outline-none">
+              )}
+              {activeTab === "fields" && (
                 <FieldsPanel data={parsedData} onInsert={onInsertField} />
-              </TabsContent>
-              <TabsContent value="examples" className="flex-1 min-h-0 m-0 outline-none">
-                <ExamplesPanel onLoad={setFormula} />
-              </TabsContent>
-            </Tabs>
+              )}
+              {activeTab === "examples" && <ExamplesPanel onLoad={setFormula} />}
+            </div>
           </div>
         </section>
 
-        <section className="min-h-0">
+        <section className="min-h-0 flex flex-col">
           <ChatPanel ref={chatRef} formula={formula} onFormulaSuggested={setFormula} />
         </section>
       </div>

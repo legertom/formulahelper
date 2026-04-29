@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Input } from "@/components/ui/input";
 import { extractFieldPaths } from "@/lib/idm/sample-data";
 
 type Props = {
@@ -20,9 +19,9 @@ function getValueAtPath(obj: unknown, path: string): unknown {
 
 function formatValue(v: unknown): string {
   if (v === null || v === undefined) return "—";
-  if (Array.isArray(v)) return `[${v.length} items]`;
+  if (Array.isArray(v)) return `[${v.length}]`;
   if (typeof v === "object") return "{…}";
-  if (typeof v === "string") return v.length > 28 ? `${v.slice(0, 28)}…` : v;
+  if (typeof v === "string") return v.length > 26 ? `${v.slice(0, 26)}…` : v;
   return String(v);
 }
 
@@ -37,22 +36,23 @@ export function FieldsPanel({ data, onInsert }: Props) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="px-3 py-2 border-b bg-muted/30 flex items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground shrink-0">
-          Fields
+      <div className="flex items-center h-7 px-3 border-b border-border bg-muted/30 text-[11px] gap-2">
+        <span className="text-muted-foreground/80 uppercase tracking-wider text-[10px]">
+          fields
         </span>
-        <span className="text-[10px] text-muted-foreground/70 shrink-0">
+        <span className="text-muted-foreground/60 tabular-nums">
           {filtered.length}/{allPaths.length}
         </span>
-        <Input
+        <span className="ml-auto" />
+        <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="filter…"
-          className="h-7 text-xs ml-auto max-w-[180px]"
+          className="h-5 w-[140px] bg-transparent border-b border-border focus:border-[var(--lime)] outline-none px-0 text-[11px] placeholder:text-muted-foreground/40"
         />
       </div>
       {data ? (
-        <ul className="flex-1 min-h-0 overflow-auto py-1">
+        <ul className="flex-1 min-h-0 overflow-auto">
           {filtered.map((path) => {
             const value = getValueAtPath(data, path);
             return (
@@ -60,10 +60,13 @@ export function FieldsPanel({ data, onInsert }: Props) {
                 <button
                   type="button"
                   onClick={() => onInsert(path)}
-                  className="w-full px-3 py-1 hover:bg-accent text-left text-xs font-mono flex items-center gap-2 group"
+                  className="w-full px-3 py-1 hover:bg-muted/50 text-left text-[12px] font-mono flex items-center gap-2 group"
                 >
+                  <span className="text-muted-foreground/40 group-hover:text-[var(--lime)] transition">
+                    +
+                  </span>
                   <span className="text-foreground">{path}</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground truncate max-w-[40%] opacity-70 group-hover:opacity-100">
+                  <span className="ml-auto text-[10.5px] text-muted-foreground/70 truncate max-w-[42%]">
                     {formatValue(value)}
                   </span>
                 </button>
@@ -71,12 +74,12 @@ export function FieldsPanel({ data, onInsert }: Props) {
             );
           })}
           {filtered.length === 0 && (
-            <li className="px-3 py-2 text-xs text-muted-foreground">No matches.</li>
+            <li className="px-3 py-2 text-[11.5px] text-muted-foreground/70">no matches</li>
           )}
         </ul>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground p-4 text-center">
-          Sample record is invalid JSON. Fix it on the Data tab.
+        <div className="flex-1 flex items-center justify-center text-[11.5px] text-muted-foreground p-4 text-center">
+          sample record is invalid JSON. fix it on the data tab.
         </div>
       )}
     </div>

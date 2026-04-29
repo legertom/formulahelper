@@ -1,8 +1,6 @@
 "use client";
 
 import { useId, type CSSProperties } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { IDM_FN_BY_NAME } from "@/lib/idm/spec";
 
 type Props = {
@@ -14,7 +12,10 @@ type Props = {
 const TOKEN_RE =
   /(\{\{|\}\}|"(?:[^"\\]|\\.)*"?|-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_.]*|\s+|[^\s])/g;
 
-type Token = { text: string; kind: "brace" | "fn" | "string" | "number" | "field" | "ws" | "punct" };
+type Token = {
+  text: string;
+  kind: "brace" | "fn" | "string" | "number" | "field" | "ws" | "punct";
+};
 
 function classify(text: string): Token["kind"] {
   if (text === "{{" || text === "}}") return "brace";
@@ -29,13 +30,13 @@ function classify(text: string): Token["kind"] {
 }
 
 const COLOR: Record<Token["kind"], string> = {
-  brace: "text-violet-600 dark:text-violet-400 font-semibold",
-  fn: "text-sky-700 dark:text-sky-300 font-medium",
-  string: "text-emerald-700 dark:text-emerald-300",
-  number: "text-amber-700 dark:text-amber-400",
-  field: "text-zinc-800 dark:text-zinc-200",
+  brace: "text-[var(--lime)]",
+  fn: "text-[var(--lime)]",
+  string: "text-foreground",
+  number: "text-[var(--amber)]",
+  field: "text-muted-foreground",
   ws: "",
-  punct: "text-zinc-500",
+  punct: "text-muted-foreground/70",
 };
 
 function tokenize(src: string): Token[] {
@@ -52,49 +53,47 @@ export function FormulaEditor({ value, onChange, onAskExplain }: Props) {
   const id = useId();
   const tokens = tokenize(value);
   const hasContent = value.trim().length > 0;
+  const lineCount = Math.max(1, value.split("\n").length);
+  const charCount = value.length;
 
   const sharedStyle: CSSProperties = {
     fontFamily:
-      'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
+      'var(--font-geist-mono), ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace',
     fontSize: 13,
-    lineHeight: "1.65",
+    lineHeight: "1.7",
     letterSpacing: 0,
     tabSize: 2,
   };
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden p-0 gap-0">
-      <CardHeader className="flex-row items-center justify-between gap-2 px-4 py-2.5 border-b bg-muted/40 [.border-b]:pb-2.5">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Formula
-          </span>
-          <span className="text-[11px] font-mono text-muted-foreground/70">.idm</span>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Button
+    <div className="flex flex-col h-full border border-border bg-card overflow-hidden">
+      <div className="flex items-center h-8 border-b border-border bg-muted/30 px-3 text-[11px]">
+        <span className="text-[var(--lime)] mr-2">▸</span>
+        <span className="text-muted-foreground">formula.idm</span>
+        <span className="mx-3 text-border">│</span>
+        <span className="text-muted-foreground/70">{lineCount}L</span>
+        <span className="mx-1.5 text-border">·</span>
+        <span className="text-muted-foreground/70">{charCount}c</span>
+        <span className="ml-auto flex items-center gap-1">
+          <button
             type="button"
-            size="sm"
-            variant="default"
             onClick={onAskExplain}
             disabled={!hasContent}
-            className="h-7 px-2.5 text-xs"
+            className="h-6 px-2 border border-border hover:bg-muted hover:text-foreground text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            Explain in plain English
-          </Button>
-          <Button
+            explain →
+          </button>
+          <button
             type="button"
-            size="sm"
-            variant="ghost"
             onClick={() => onChange("")}
             disabled={!hasContent}
-            className="h-7 px-2 text-xs text-muted-foreground"
+            className="h-6 px-2 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 transition"
           >
-            Clear
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 min-h-0 relative p-0">
+            clear
+          </button>
+        </span>
+      </div>
+      <div className="flex-1 min-h-0 relative overflow-hidden">
         <div className="absolute inset-0 overflow-auto">
           <div className="relative min-h-full">
             <pre
@@ -116,23 +115,21 @@ export function FormulaEditor({ value, onChange, onAskExplain }: Props) {
               onChange={(e) => onChange(e.target.value)}
               spellCheck={false}
               placeholder='{{if equals school_name "A" "Group A" "uncategorized"}}'
-              className="absolute inset-0 px-4 py-3 w-full h-full bg-transparent text-transparent caret-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none whitespace-pre-wrap break-words"
+              className="absolute inset-0 px-4 py-3 w-full h-full bg-transparent text-transparent caret-[var(--lime)] placeholder:text-muted-foreground/40 resize-none focus:outline-none whitespace-pre-wrap break-words"
               style={sharedStyle}
             />
           </div>
         </div>
-      </CardContent>
-      <div className="px-4 py-1.5 border-t bg-muted/40 text-[10.5px] text-muted-foreground flex items-center gap-3">
-        <span>
-          Prefix notation. Wrap in <code className="font-mono">{"{{ ... }}"}</code>.
-        </span>
-        <span className="opacity-50">·</span>
-        <span className="font-mono">
-          <span className="text-sky-700 dark:text-sky-300">fn</span>{" "}
-          <span className="text-emerald-700 dark:text-emerald-300">&quot;str&quot;</span>{" "}
-          <span className="text-zinc-700 dark:text-zinc-300">field.path</span>
-        </span>
       </div>
-    </Card>
+      <div className="flex items-center h-7 border-t border-border bg-muted/30 px-3 text-[10.5px] text-muted-foreground gap-3">
+        <span>
+          <span className="text-[var(--lime)]">fn</span> ·{" "}
+          <span className="text-foreground">&quot;str&quot;</span> ·{" "}
+          <span className="text-[var(--amber)]">123</span> ·{" "}
+          <span className="text-muted-foreground">field.path</span>
+        </span>
+        <span className="ml-auto text-muted-foreground/60">prefix · {"{{ }}"} · no parens</span>
+      </div>
+    </div>
   );
 }

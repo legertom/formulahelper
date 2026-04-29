@@ -2,6 +2,7 @@
 
 import { useId, useState, type CSSProperties } from "react";
 import { IDM_FN_BY_NAME } from "@/lib/idm/spec";
+import { formatFormulaLocal } from "@/lib/idm/format";
 import { HistoryPopover } from "@/components/history-popover";
 import type { HistoryEntry } from "@/lib/use-history";
 
@@ -79,48 +80,35 @@ export function FormulaEditor({
   const lineCount = Math.max(1, value.split("\n").length);
   const charCount = value.length;
 
-  const [activeOp, setActiveOp] = useState<"format" | "condense" | null>(null);
-
-  async function reformat(pretty: boolean) {
-    if (!hasContent || activeOp) return;
+  function reformat(pretty: boolean) {
+    if (!hasContent) return;
     const op = pretty ? "format" : "condense";
-    setActiveOp(op);
-    setFormatErr(null);
-    try {
-      const res = await fetch("/api/idm-format", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ formula: value, pretty, canonicalize: true }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json?.formula) {
-        setFormatErr(json?.error ?? `HTTP ${res.status}`);
-        return;
-      }
-      const result: string = json.formula;
-      const stripped = stripStringLiterals(result);
-      const inputStripped = stripStringLiterals(value);
-      const introducedParens =
-        (stripped.includes("(") && !inputStripped.includes("(")) ||
-        (stripped.includes(")") && !inputStripped.includes(")"));
-      if (introducedParens) {
-        setFormatErr(`${op} returned parens (invalid IDM); not applied`);
-        return;
-      }
-      if (result.trim() === value.trim()) {
-        setFormatErr(pretty ? "already formatted" : "already condensed");
-        return;
-      }
-      onFormatted(result);
-    } catch (err) {
-      setFormatErr(err instanceof Error ? err.message : `${op} failed`);
-    } finally {
-      setActiveOp(null);
+    const showError = (msg: string) => {
+      setFormatErr(msg);
       setTimeout(() => setFormatErr(null), 3000);
+    };
+    const outcome = formatFormulaLocal(value, { pretty, canonicalize: true });
+    if (!outcome.ok) {
+      showError(outcome.error);
+      return;
     }
+    const result = outcome.formula;
+    const stripped = stripStringLiterals(result);
+    const inputStripped = stripStringLiterals(value);
+    const introducedParens =
+      (stripped.includes("(") && !inputStripped.includes("(")) ||
+      (stripped.includes(")") && !inputStripped.includes(")"));
+    if (introducedParens) {
+      showError(`${op} returned parens (invalid IDM); not applied`);
+      return;
+    }
+    if (result.trim() === value.trim()) {
+      showError(pretty ? "already formatted" : "already condensed");
+      return;
+    }
+    setFormatErr(null);
+    onFormatted(result);
   }
-
-  const formatting = activeOp !== null;
 
   const sharedStyle: CSSProperties = {
     fontFamily:
@@ -150,20 +138,20 @@ export function FormulaEditor({
           <button
             type="button"
             onClick={() => reformat(true)}
-            disabled={!hasContent || formatting}
+            disabled={!hasContent}
             title="Pretty-print: indented multi-line + canonicalize aliases"
             className="h-6 px-2 border border-foreground/25 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition rounded-sm"
           >
-            {activeOp === "format" ? "formatting…" : "↕ format"}
+            ↕ format
           </button>
           <button
             type="button"
             onClick={() => reformat(false)}
-            disabled={!hasContent || formatting}
+            disabled={!hasContent}
             title="Single-line + canonicalize aliases"
             className="h-6 px-2 border border-foreground/25 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition rounded-sm"
           >
-            {activeOp === "condense" ? "condensing…" : "→ condense"}
+            → condense
           </button>
           <button
             type="button"

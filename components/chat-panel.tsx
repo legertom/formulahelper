@@ -3,6 +3,8 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart } from "ai";
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export type ChatPanelHandle = {
   send: (text: string) => void;
@@ -114,9 +116,9 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
                 return (
                   <div
                     key={i}
-                    className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed"
+                    className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed"
                   >
-                    {renderInlineCode(part.text)}
+                    <Markdown>{part.text}</Markdown>
                   </div>
                 );
               }
@@ -176,32 +178,82 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
   );
 }
 
-function renderInlineCode(text: string) {
-  const parts = text.split(/(```[\s\S]*?```|`[^`]+`)/g);
-  return parts.map((seg, i) => {
-    if (seg.startsWith("```")) {
-      const inner = seg.replace(/```(?:\w+)?\n?/, "").replace(/```$/, "");
-      return (
-        <pre
-          key={i}
-          className="my-2 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 text-xs font-mono overflow-x-auto whitespace-pre"
-        >
-          {inner}
-        </pre>
-      );
-    }
-    if (seg.startsWith("`") && seg.endsWith("`") && seg.length > 1) {
-      return (
-        <code
-          key={i}
-          className="font-mono text-xs px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
-        >
-          {seg.slice(1, -1)}
-        </code>
-      );
-    }
-    return <span key={i}>{seg}</span>;
-  });
+function Markdown({ children }: { children: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        h1: (props) => <h1 className="text-base font-semibold mt-3 mb-1.5" {...props} />,
+        h2: (props) => <h2 className="text-sm font-semibold mt-3 mb-1.5" {...props} />,
+        h3: (props) => <h3 className="text-sm font-semibold mt-2.5 mb-1" {...props} />,
+        h4: (props) => <h4 className="text-xs font-semibold uppercase tracking-wider mt-2 mb-1 text-zinc-600 dark:text-zinc-400" {...props} />,
+        p: (props) => <p className="my-1.5" {...props} />,
+        ul: (props) => <ul className="list-disc pl-5 my-1.5 space-y-1" {...props} />,
+        ol: (props) => <ol className="list-decimal pl-5 my-1.5 space-y-1" {...props} />,
+        li: (props) => <li className="leading-snug" {...props} />,
+        strong: (props) => <strong className="font-semibold text-zinc-900 dark:text-zinc-50" {...props} />,
+        em: (props) => <em className="italic" {...props} />,
+        a: (props) => (
+          <a className="underline decoration-dotted text-blue-600 dark:text-blue-400" target="_blank" rel="noreferrer" {...props} />
+        ),
+        blockquote: (props) => (
+          <blockquote
+            className="my-2 pl-3 border-l-2 border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 italic"
+            {...props}
+          />
+        ),
+        hr: () => <hr className="my-3 border-zinc-200 dark:border-zinc-800" />,
+        code: (props) => {
+          const { className, children, ...rest } = props as {
+            className?: string;
+            children?: React.ReactNode;
+          };
+          const isBlock = className && className.startsWith("language-");
+          if (isBlock) {
+            return (
+              <code className={`${className ?? ""} font-mono`} {...rest}>
+                {children}
+              </code>
+            );
+          }
+          return (
+            <code
+              className="font-mono text-[0.85em] px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+              {...rest}
+            >
+              {children}
+            </code>
+          );
+        },
+        pre: (props) => (
+          <pre
+            className="my-2 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 text-xs overflow-x-auto whitespace-pre"
+            {...props}
+          />
+        ),
+        table: (props) => (
+          <div className="my-2 overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
+            <table className="w-full text-xs" {...props} />
+          </div>
+        ),
+        thead: (props) => <thead className="bg-zinc-50 dark:bg-zinc-900" {...props} />,
+        th: (props) => (
+          <th
+            className="text-left font-semibold px-3 py-1.5 border-b border-zinc-200 dark:border-zinc-800"
+            {...props}
+          />
+        ),
+        td: (props) => (
+          <td
+            className="px-3 py-1.5 border-b border-zinc-200/60 dark:border-zinc-800/60 align-top"
+            {...props}
+          />
+        ),
+      }}
+    >
+      {children}
+    </ReactMarkdown>
+  );
 }
 
 type ToolUIPart = {

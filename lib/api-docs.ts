@@ -21,7 +21,14 @@ export type ApiEndpoint = {
   curl?: string;
 };
 
-const BASE = "https://formulahelper.vercel.app";
+// Public origin for example URLs in the docs. Set NEXT_PUBLIC_BASE_URL on
+// custom domains; falls back to Vercel's auto-injected VERCEL_PROJECT_PRODUCTION_URL
+// at build time, then to the canonical preview URL.
+const BASE =
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "https://idmformulahelper.vercel.app");
 
 export const API_ENDPOINTS: ApiEndpoint[] = [
   {

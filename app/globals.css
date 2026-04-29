@@ -57,6 +57,13 @@
   --font-body: var(--font-geist-mono), ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
   --font-display: var(--font-geist-mono), ui-monospace, monospace;
 
+  --syntax-fn: oklch(0.62 0.18 145);
+  --syntax-brace: oklch(0.55 0.16 320);
+  --syntax-string: oklch(0.55 0.15 35);
+  --syntax-number: oklch(0.55 0.15 235);
+  --syntax-field: oklch(0.4 0.04 240);
+  --syntax-punct: oklch(0.55 0.01 270);
+
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.18 0.005 270);
   --card: oklch(1 0 0);
@@ -98,6 +105,13 @@
 
 .dark[data-flavor="terminal"],
 .dark:not([data-flavor]) {
+  --syntax-fn: oklch(0.86 0.18 130);
+  --syntax-brace: oklch(0.78 0.18 320);
+  --syntax-string: oklch(0.83 0.14 50);
+  --syntax-number: oklch(0.78 0.13 220);
+  --syntax-field: oklch(0.86 0.012 80);
+  --syntax-punct: oklch(0.55 0.012 270);
+
   --background: oklch(0.16 0.006 270);
   --foreground: oklch(0.94 0.005 270);
   --card: oklch(0.19 0.006 270);
@@ -137,6 +151,13 @@
 [data-flavor="swiss"] {
   --font-body: "Inter", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
   --font-display: "Inter", "Helvetica Neue", "Helvetica", sans-serif;
+
+  --syntax-fn: oklch(0.55 0.22 25);
+  --syntax-brace: oklch(0.16 0 0);
+  --syntax-string: oklch(0.16 0 0);
+  --syntax-number: oklch(0.4 0.005 80);
+  --syntax-field: oklch(0.35 0.005 80);
+  --syntax-punct: oklch(0.55 0.005 80);
 
   --background: oklch(0.985 0.002 80);
   --foreground: oklch(0.16 0 0);
@@ -178,6 +199,13 @@
 }
 
 .dark[data-flavor="swiss"] {
+  --syntax-fn: oklch(0.65 0.24 25);
+  --syntax-brace: oklch(0.97 0 0);
+  --syntax-string: oklch(0.97 0 0);
+  --syntax-number: oklch(0.75 0.005 80);
+  --syntax-field: oklch(0.78 0.005 80);
+  --syntax-punct: oklch(0.55 0.005 80);
+
   --background: oklch(0.16 0 0);
   --foreground: oklch(0.97 0 0);
   --card: oklch(0.18 0 0);
@@ -217,6 +245,13 @@
 [data-flavor="edtech"] {
   --font-body: "DM Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-display: "DM Sans", "Inter", system-ui, sans-serif;
+
+  --syntax-fn: oklch(0.6 0.18 30);
+  --syntax-brace: oklch(0.55 0.13 165);
+  --syntax-string: oklch(0.45 0.12 75);
+  --syntax-number: oklch(0.5 0.18 280);
+  --syntax-field: oklch(0.4 0.025 280);
+  --syntax-punct: oklch(0.6 0.025 280);
 
   --background: oklch(0.985 0.012 70);
   --foreground: oklch(0.27 0.025 280);
@@ -258,6 +293,13 @@
 }
 
 .dark[data-flavor="edtech"] {
+  --syntax-fn: oklch(0.78 0.17 30);
+  --syntax-brace: oklch(0.78 0.13 165);
+  --syntax-string: oklch(0.82 0.13 75);
+  --syntax-number: oklch(0.75 0.15 280);
+  --syntax-field: oklch(0.85 0.018 70);
+  --syntax-punct: oklch(0.6 0.025 280);
+
   --background: oklch(0.21 0.025 280);
   --foreground: oklch(0.96 0.012 70);
   --card: oklch(0.25 0.025 280);

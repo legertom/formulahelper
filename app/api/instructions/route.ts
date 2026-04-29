@@ -6,7 +6,19 @@ import {
   type ApiEndpoint,
 } from "@/lib/api-docs";
 
-const BASE = "https://formulahelper.vercel.app";
+function originFromRequest(req: Request): string {
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  const forwardedHost = req.headers.get("x-forwarded-host");
+  const forwardedProto = req.headers.get("x-forwarded-proto") ?? "https";
+  if (forwardedHost) return `${forwardedProto}://${forwardedHost}`;
+  try {
+    return new URL(req.url).origin;
+  } catch {
+    return "https://idmformulahelper.vercel.app";
+  }
+}
+
+const FALLBACK_BASE = "https://idmformulahelper.vercel.app";
 
 function escapeHtml(s: string): string {
   return s
@@ -17,15 +29,20 @@ function escapeHtml(s: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function buildJson() {
+function rewriteBase(text: string | undefined, base: string): string | undefined {
+  if (!text) return text;
+  return text.replaceAll(FALLBACK_BASE, base);
+}
+
+function buildJson(base: string) {
   return {
     name: "Formula Helper API",
-    version: "0.3",
-    baseUrl: BASE,
+    version: "0.4",
+    baseUrl: base,
     auth: "none currently required",
     upstream: "https://www.formulastudio.net",
     repo: "https://github.com/legertom/formulahelper",
-    aboutPage: `${BASE}/about`,
+    aboutPage: `${base}/about`,
     endpointCount: API_ENDPOINTS.length,
     endpoints: API_ENDPOINTS.map((e) => ({
       id: e.id,
@@ -37,15 +54,16 @@ function buildJson() {
       description: e.description,
       requestShape: e.requestShape,
       responseShape: e.responseShape,
-      curl: e.curl,
+      curl: rewriteBase(e.curl, base),
     })),
     categories: CATEGORY_LABELS,
     costs: COST_LABELS,
   };
 }
 
-function endpointSection(ep: ApiEndpoint): string {
-  const url = `${BASE}${ep.path}`;
+function endpointSection(ep: ApiEndpoint, base: string): string {
+  const url = `${base}${ep.path}`;
+  const curl = rewriteBase(ep.curl, base);
   const costColor = COST_COLORS[ep.cost];
   const costLabel = COST_LABELS[ep.cost];
   return `
@@ -61,12 +79,12 @@ function endpointSection(ep: ApiEndpoint): string {
     ${ep.description ? `<p class="desc">${escapeHtml(ep.description).replace(/`([^`]+)`/g, "<code>$1</code>")}</p>` : ""}
     ${ep.requestShape ? `<details open><summary>Request body</summary><pre><code>${escapeHtml(ep.requestShape)}</code></pre></details>` : ""}
     ${ep.responseShape ? `<details><summary>Response</summary><pre><code>${escapeHtml(ep.responseShape)}</code></pre></details>` : ""}
-    ${ep.curl ? `<details><summary>curl</summary><pre><code>${escapeHtml(ep.curl)}</code></pre></details>` : ""}
+    ${curl ? `<details><summary>curl</summary><pre><code>${escapeHtml(curl)}</code></pre></details>` : ""}
     <p class="try">→ <a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(url)}</a></p>
   </section>`;
 }
 
-function buildHtml(): string {
+function buildHtml(base: string): string {
   const grouped = API_ENDPOINTS.reduce<Record<string, ApiEndpoint[]>>(
     (acc, e) => {
       (acc[e.category] ??= []).push(e);
@@ -91,7 +109,7 @@ function buildHtml(): string {
     .map(
       ([cat, eps]) => `
     <h2 id="cat-${cat}">${escapeHtml(CATEGORY_LABELS[cat as ApiEndpoint["category"]])}</h2>
-    ${eps.map(endpointSection).join("")}
+    ${eps.map((ep) => endpointSection(ep, base)).join("")}
   `,
     )
     .join("");
@@ -298,7 +316,7 @@ function buildHtml(): string {
       <div class="row">
         <div>
           <label>Base URL</label>
-          <strong><code>${BASE}</code></strong>
+          <strong><code>${base}</code></strong>
         </div>
         <div>
           <label>Auth</label>
@@ -324,7 +342,7 @@ function buildHtml(): string {
         )
         .join("")}
       <a href="https://github.com/legertom/formulahelper" target="_blank" rel="noreferrer">GitHub ↗</a>
-      <a href="${BASE}/about">About →</a>
+      <a href="${base}/about">About →</a>
       <a href="https://www.formulastudio.net/api/instructions" target="_blank" rel="noreferrer">formulastudio.net docs ↗</a>
     </nav>
 
@@ -345,18 +363,27 @@ function buildHtml(): string {
 }
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const accept = req.headers.get("accept") ?? "";
-  const wantsJson =
-    url.searchParams.get("format") === "json" ||
-    accept.includes("application/json");
+  try {
+    const url = new URL(req.url);
+    const accept = req.headers.get("accept") ?? "";
+    const wantsJson =
+      url.searchParams.get("format") === "json" ||
+      accept.includes("application/json");
+    const base = originFromRequest(req);
 
-  if (wantsJson) {
-    return Response.json(buildJson());
+    if (wantsJson) {
+      return Response.json(buildJson(base));
+    }
+
+    return new Response(buildHtml(base), {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  } catch (err) {
+    console.error("[/api/instructions] error:", err);
+    return Response.json(
+      { error: err instanceof Error ? err.message : "Internal error" },
+      { status: 500 },
+    );
   }
-
-  return new Response(buildHtml(), {
-    status: 200,
-    headers: { "Content-Type": "text/html; charset=utf-8" },
-  });
 }

@@ -39,13 +39,13 @@ function classify(text: string): Token["kind"] {
 }
 
 const COLOR: Record<Token["kind"], string> = {
-  brace: "text-[var(--lime)]",
-  fn: "text-[var(--lime)]",
-  string: "text-foreground",
-  number: "text-[var(--amber)]",
-  field: "text-muted-foreground",
+  brace: "text-[var(--syntax-brace)]",
+  fn: "text-[var(--syntax-fn)] font-medium",
+  string: "text-[var(--syntax-string)]",
+  number: "text-[var(--syntax-number)]",
+  field: "text-[var(--syntax-field)]",
   ws: "",
-  punct: "text-muted-foreground/70",
+  punct: "text-[var(--syntax-punct)]",
 };
 
 function stripStringLiterals(src: string): string {
@@ -215,12 +215,14 @@ export function FormulaEditor({
       </div>
       <div className="flex items-center h-7 border-t border-border bg-muted/30 px-3 text-[10.5px] text-muted-foreground gap-3">
         <span>
-          <span className="text-[var(--lime)]">fn</span> ·{" "}
-          <span className="text-foreground">&quot;str&quot;</span> ·{" "}
-          <span className="text-[var(--amber)]">123</span> ·{" "}
-          <span className="text-muted-foreground">field.path</span>
+          <span className="text-[var(--syntax-brace)]">{"{{"}</span>{" "}
+          <span className="text-[var(--syntax-fn)]">fn</span>{" "}
+          <span className="text-[var(--syntax-string)]">&quot;str&quot;</span>{" "}
+          <span className="text-[var(--syntax-number)]">123</span>{" "}
+          <span className="text-[var(--syntax-field)]">field.path</span>{" "}
+          <span className="text-[var(--syntax-brace)]">{"}}"}</span>
         </span>
-        <span className="ml-auto text-muted-foreground/60">prefix · {"{{ }}"} · no parens</span>
+        <span className="ml-auto text-muted-foreground/60">prefix · no parens</span>
       </div>
     </div>
   );

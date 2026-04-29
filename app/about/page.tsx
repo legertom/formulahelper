@@ -242,11 +242,60 @@ export default function AboutPage() {
 
         <section className="space-y-3">
           <Heading>Server routes</Heading>
+          <p className="text-muted-foreground">
+            All routes return JSON. The 11 deterministic endpoints below run client-grade
+            algorithms on the server (no AI tokens). The two upstream proxies and{" "}
+            <code className="font-mono">/api/chat</code> are the only AI-cost paths.
+          </p>
           <Table
             rows={[
-              ["POST /api/chat", "streamText agent loop with five IDM tools, max 15 steps"],
-              ["POST /api/idm-test", "proxy → formulastudio.net /api/idm-test (live result strip)"],
-              ["POST /api/idm-format", "proxy → formulastudio.net /api/idm-format (format button)"],
+              ["POST /api/chat", "streamText agent loop with five IDM tools (uses AI tokens)"],
+              ["POST /api/idm-test", "proxy → formulastudio.net /api/idm-test"],
+              ["POST /api/idm-format", "proxy → formulastudio.net /api/idm-format"],
+              [
+                "POST /api/idm-trace",
+                "Formula + record → AST + per-node values + branch-taken on every if. Deterministic.",
+              ],
+              [
+                "POST /api/idm-coverage",
+                "Formula + records[] → which if-branches each record hit, plus list of unreachable branches.",
+              ],
+              [
+                "POST /api/idm-typecheck",
+                "Formula + schema → list of field references that don't exist on the schema.",
+              ],
+              [
+                "POST /api/idm-batch-test",
+                "Like /api/idm-test but takes up to 5000 records and returns aggregate output distribution + pass/fail counts + elapsed ms.",
+              ],
+              [
+                "POST /api/idm-decompile",
+                "IDM formula → structured rules JSON (inverse of /api/idm-group-rules). Best-effort: returns `decompilable: false` with a reason if the formula doesn't fit the rule shape.",
+              ],
+              [
+                "POST /api/idm-explain",
+                "Formula → structured walkthrough JSON: { summary, branches: [{ when, output }] }.",
+              ],
+              [
+                "POST /api/idm-diff",
+                "{ before, after } → semantic diff: branch-added, branch-removed, output-changed, condition-changed, fallback-changed.",
+              ],
+              [
+                "POST /api/idm-simplify",
+                "Deterministic optimizer: collapses if-branches that share an output via `or`, removes double-negation, drops if-branches whose true/false sides are identical. Returns { formula, changed, notes }.",
+              ],
+              [
+                "GET /api/idm-fields/:domain",
+                "Curated field dictionaries: k12, hr, healthcare. Use _all to list domain summaries.",
+              ],
+              [
+                "POST /api/idm-complete",
+                "{ formula, pos, data?, limit? } → ranked completions for the prefix at the cursor (functions + field paths from the supplied data).",
+              ],
+              [
+                "GET /api/health",
+                "Status + upstream check against formulastudio.net. ok / degraded.",
+              ],
             ]}
           />
         </section>

@@ -73,50 +73,54 @@ export function FormulaEditor({
   onClearHistory,
 }: Props) {
   const id = useId();
-  const [formatting, setFormatting] = useState(false);
   const [formatErr, setFormatErr] = useState<string | null>(null);
   const tokens = tokenize(value);
   const hasContent = value.trim().length > 0;
   const lineCount = Math.max(1, value.split("\n").length);
   const charCount = value.length;
 
-  async function format() {
-    if (!hasContent || formatting) return;
-    setFormatting(true);
+  const [activeOp, setActiveOp] = useState<"format" | "condense" | null>(null);
+
+  async function reformat(pretty: boolean) {
+    if (!hasContent || activeOp) return;
+    const op = pretty ? "format" : "condense";
+    setActiveOp(op);
     setFormatErr(null);
     try {
       const res = await fetch("/api/idm-format", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ formula: value, pretty: true, canonicalize: true }),
+        body: JSON.stringify({ formula: value, pretty, canonicalize: true }),
       });
       const json = await res.json();
       if (!res.ok || !json?.formula) {
         setFormatErr(json?.error ?? `HTTP ${res.status}`);
         return;
       }
-      const formatted: string = json.formula;
-      const stripped = stripStringLiterals(formatted);
+      const result: string = json.formula;
+      const stripped = stripStringLiterals(result);
       const inputStripped = stripStringLiterals(value);
       const introducedParens =
         (stripped.includes("(") && !inputStripped.includes("(")) ||
         (stripped.includes(")") && !inputStripped.includes(")"));
       if (introducedParens) {
-        setFormatErr("formatter returned parens (invalid IDM); not applied");
+        setFormatErr(`${op} returned parens (invalid IDM); not applied`);
         return;
       }
-      if (formatted.trim() === value.trim()) {
-        setFormatErr("already formatted");
+      if (result.trim() === value.trim()) {
+        setFormatErr(pretty ? "already formatted" : "already condensed");
         return;
       }
-      onFormatted(formatted);
+      onFormatted(result);
     } catch (err) {
-      setFormatErr(err instanceof Error ? err.message : "format failed");
+      setFormatErr(err instanceof Error ? err.message : `${op} failed`);
     } finally {
-      setFormatting(false);
+      setActiveOp(null);
       setTimeout(() => setFormatErr(null), 3000);
     }
   }
+
+  const formatting = activeOp !== null;
 
   const sharedStyle: CSSProperties = {
     fontFamily:
@@ -145,11 +149,21 @@ export function FormulaEditor({
         <span className="ml-auto flex items-center gap-1.5">
           <button
             type="button"
-            onClick={format}
+            onClick={() => reformat(true)}
             disabled={!hasContent || formatting}
+            title="Pretty-print: indented multi-line + canonicalize aliases"
             className="h-6 px-2 border border-foreground/25 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition rounded-sm"
           >
-            {formatting ? "formatting…" : "format"}
+            {activeOp === "format" ? "formatting…" : "↕ format"}
+          </button>
+          <button
+            type="button"
+            onClick={() => reformat(false)}
+            disabled={!hasContent || formatting}
+            title="Single-line + canonicalize aliases"
+            className="h-6 px-2 border border-foreground/25 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition rounded-sm"
+          >
+            {activeOp === "condense" ? "condensing…" : "→ condense"}
           </button>
           <button
             type="button"

@@ -308,6 +308,300 @@ export default function AboutPage() {
         </section>
 
         <section className="space-y-3">
+          <Heading>Note for builders — LLMs will break your DSL</Heading>
+          <p>
+            If you&rsquo;re building anything LLM-powered on top of IDM (or any
+            non-mainstream syntax), this is the single most important thing to internalize:
+          </p>
+          <div className="border border-[var(--amber)]/60 bg-[var(--amber)]/10 px-4 py-3">
+            <p className="font-semibold text-foreground mb-1">
+              The model has read more JavaScript than IDM. It will regress to the mean.
+            </p>
+            <p className="text-muted-foreground">
+              Even a frontier model with the full spec in its system prompt will, under load,
+              quietly write{" "}
+              <code className="font-mono">
+                {"{{if (greater gpa \"3.5\") \"honors\" \"regular\"}}"}
+              </code>{" "}
+              when it should write{" "}
+              <code className="font-mono">
+                {"{{if greater gpa \"3.5\" \"honors\" \"regular\"}}"}
+              </code>
+              . It saw a million function-call expressions during pre-training and 28 IDM
+              formulas — guess which pattern wins on a fuzzy day.
+            </p>
+          </div>
+
+          <p>
+            Specifically, here are the failure modes I observed against{" "}
+            <code className="font-mono">claude-sonnet-4.6</code> while building this app — they
+            generalize to any LLM and any prefix/postfix DSL:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-muted-foreground">
+            <li>
+              <strong className="text-foreground">Parentheses for grouping</strong> — the model
+              wraps sub-expressions in <code className="font-mono">(...)</code> because that&rsquo;s
+              what feels like &ldquo;structured code.&rdquo; IDM has no parens; argument
+              position is the only grouping mechanism. <em>This was the actual bug that prompted
+              this section.</em>
+            </li>
+            <li>
+              <strong className="text-foreground">Commas between args</strong> — same root
+              cause. Whitespace separates arguments in IDM; commas are syntax errors.
+            </li>
+            <li>
+              <strong className="text-foreground">Infix operators</strong> —{" "}
+              <code className="font-mono">a {">"} b</code> instead of{" "}
+              <code className="font-mono">greater a b</code>.
+            </li>
+            <li>
+              <strong className="text-foreground">Function call style</strong> —{" "}
+              <code className="font-mono">greater(a, b)</code> instead of prefix.
+            </li>
+            <li>
+              <strong className="text-foreground">Empty fallback in `if`</strong> — the model
+              omits the third arg or passes <code className="font-mono">&quot;&quot;</code>{" "}
+              when the user didn&rsquo;t specify one. IDM&rsquo;s <code>if</code> is fixed
+              arity-3; an unspecified fallback should be an explicit{" "}
+              <code className="font-mono">&quot;uncategorized&quot;</code> or similar.
+            </li>
+            <li>
+              <strong className="text-foreground">Wrong arity on uncommon functions</strong> —{" "}
+              <code className="font-mono">substr</code> takes 3 args (text, start, length); the
+              model occasionally passes 2.
+            </li>
+            <li>
+              <strong className="text-foreground">Aliases drifting back to canonical</strong> —
+              even though we explicitly say &ldquo;use <code>length</code>, not{" "}
+              <code>len</code>,&rdquo; this still drifts under enough context pressure.
+            </li>
+          </ul>
+
+          <h3 className="text-[13px] font-semibold tracking-tight text-foreground pt-3 pb-1 border-b border-border flex items-center gap-2">
+            <span className="text-[var(--lime)] text-[11px]">▸</span>
+            What works (defense in depth)
+          </h3>
+          <p>
+            One layer is never enough. We use four, in this order:
+          </p>
+          <ol className="list-decimal pl-5 space-y-2 text-muted-foreground">
+            <li>
+              <strong className="text-foreground">Front-load the system prompt</strong> with a
+              CRITICAL RULES callout containing wrong-vs-right pairs. Bullets buried below the
+              function catalog get ignored under context pressure. The first 200 tokens of
+              the system prompt do the most work — see{" "}
+              <code className="font-mono">lib/idm/spec.ts</code>.
+            </li>
+            <li>
+              <strong className="text-foreground">Force tool calls</strong>. The chat agent has{" "}
+              <code className="font-mono">validate_formula</code> as a tool; the prompt tells
+              it to call validate after every draft. The deterministic validator catches
+              what the prompt missed.
+            </li>
+            <li>
+              <strong className="text-foreground">Client-side guards before auto-apply</strong>.
+              When the assistant emits a fenced{" "}
+              <code className="font-mono">handlebars</code> block, the chat panel runs our
+              local parser{" "}
+              <em>before</em> pushing it into the editor. If the parser finds parens, commas,
+              or syntax errors, the sync is rejected and an amber banner appears with an
+              &ldquo;apply anyway&rdquo; escape hatch. See{" "}
+              <code className="font-mono">components/chat-panel.tsx</code>.
+            </li>
+            <li>
+              <strong className="text-foreground">Always preserve undo</strong>. Before any
+              automated action that mutates the user&rsquo;s formula (chat suggestion, format,
+              example load), push the prior version onto the history stack. Surprises become
+              recoverable instead of catastrophic.
+            </li>
+          </ol>
+
+          <h3 className="text-[13px] font-semibold tracking-tight text-foreground pt-3 pb-1 border-b border-border flex items-center gap-2">
+            <span className="text-[var(--lime)] text-[11px]">▸</span>
+            What doesn&rsquo;t work
+          </h3>
+          <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+            <li>
+              <strong className="text-foreground">Fine-tuning</strong> — overkill for syntactic
+              constraints. The signal is short and well-specified; you don&rsquo;t need new
+              weights, you need a clearer prompt and a safety net.
+            </li>
+            <li>
+              <strong className="text-foreground">A bigger model</strong> — Opus instead of
+              Sonnet, GPT-5 instead of GPT-4. Marginal improvement, same failure mode at scale.
+            </li>
+            <li>
+              <strong className="text-foreground">Trusting the model&rsquo;s self-reported
+              confidence</strong>. It will say &ldquo;here&rsquo;s a valid IDM formula:&rdquo;
+              and emit invalid IDM in the same breath. Verify, don&rsquo;t trust.
+            </li>
+            <li>
+              <strong className="text-foreground">Post-hoc cleanup heuristics</strong> like
+              &ldquo;strip the parens.&rdquo; You can&rsquo;t reliably undo a wrong AST shape
+              with regex. Reject and re-roll.
+            </li>
+          </ul>
+          <p className="text-muted-foreground italic">
+            TL;DR — write your system prompt like the model is hostile, and parse its output
+            like you would untrusted user input. It is, kind of.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <Heading>API ideas for formulastudio.net</Heading>
+          <p>
+            While building this app, I kept reaching for endpoints that don&rsquo;t exist on{" "}
+            <a href="https://formulastudio.net" className="underline decoration-dotted">
+              formulastudio.net
+            </a>{" "}
+            yet. Suggestions for the API roadmap, ranked by leverage for downstream builders:
+          </p>
+
+          <Table
+            rows={[
+              [
+                <code key="trace" className="font-mono text-foreground">
+                  POST /api/idm-trace
+                </code>,
+                <span key="trace-d">
+                  Formula + record → AST + per-node values + branch-taken on every <code>if</code>.
+                  This is the killer one. Right now I had to write a client-side parser (
+                  <code className="font-mono">lib/idm/parser.ts</code>) and evaluator (
+                  <code className="font-mono">lib/idm/eval.ts</code>) just to render the trace
+                  tab. Every UI builder will redo this work. Returns{" "}
+                  <code className="font-mono">{"{ ast, trace: { [nodeId]: { value, error?, branchTaken? } } }"}</code>.
+                </span>,
+              ],
+              [
+                <code key="cov" className="font-mono text-foreground">
+                  POST /api/idm-coverage
+                </code>,
+                <span key="cov-d">
+                  Formula + records[] → per-<code>if</code> branch coverage report. Surfaces
+                  unreachable branches and hot paths. Built trivially on top of trace.
+                </span>,
+              ],
+              [
+                <code key="dec" className="font-mono text-foreground">
+                  POST /api/idm-decompile
+                </code>,
+                <span key="dec-d">
+                  Inverse of <code className="font-mono">/api/idm-group-rules</code>. Given an
+                  IDM formula, return the structured{" "}
+                  <code className="font-mono">{"{ rules: [...], defaultOutput }"}</code> JSON.
+                  Lets builders migrate hand-written formulas back to a rule-editor UI.
+                </span>,
+              ],
+              [
+                <code key="tc" className="font-mono text-foreground">
+                  POST /api/idm-typecheck
+                </code>,
+                <span key="tc-d">
+                  Formula + JSON schema (or a sample record) → list of field references that
+                  don&rsquo;t exist on the schema. Catches{" "}
+                  <code className="font-mono">student.sis_di</code> typos at edit time. The
+                  validator already has the parser; just walk field nodes and check against
+                  the schema.
+                </span>,
+              ],
+              [
+                <code key="simp" className="font-mono text-foreground">
+                  POST /api/idm-simplify
+                </code>,
+                <span key="simp-d">
+                  Refactor an IDM formula. Collapses redundant <code>if</code> branches that
+                  share an output, dedupes <code>or</code> chains, flattens nested{" "}
+                  <code>and</code>. Could ship as a deterministic optimizer, or LLM-backed with
+                  the rules baked in plus a re-validate step.
+                </span>,
+              ],
+              [
+                <code key="exp" className="font-mono text-foreground">
+                  POST /api/idm-explain
+                </code>,
+                <span key="exp-d">
+                  Formula → structured plain-English walkthrough as JSON: an array of{" "}
+                  <code className="font-mono">{"{ when, output, fields, tone }"}</code> entries
+                  per branch. Lets every UI render explanation differently (popover, tooltip,
+                  doc-export) without each one calling an LLM separately.
+                </span>,
+              ],
+              [
+                <code key="diff" className="font-mono text-foreground">
+                  POST /api/idm-diff
+                </code>,
+                <span key="diff-d">
+                  Semantic diff between two formulas (not just text diff). &ldquo;Branch 3
+                  output changed from <code>&quot;A&quot;</code> to{" "}
+                  <code>&quot;B&quot;</code>; new branch added before fallback.&rdquo; Lets
+                  reviewers approve formula changes the way they approve code.
+                </span>,
+              ],
+              [
+                <code key="batch" className="font-mono text-foreground">
+                  POST /api/idm-batch-test
+                </code>,
+                <span key="batch-d">
+                  Optimized variant of <code className="font-mono">/api/idm-test</code> for
+                  large datasets. Stream results via SSE; cap memory; return aggregate stats.
+                </span>,
+              ],
+              [
+                <code key="fields" className="font-mono text-foreground">
+                  GET /api/idm-fields/:domain
+                </code>,
+                <span key="fields-d">
+                  Curated dictionaries of common field paths per domain (k12, healthcare,
+                  hr, finance). Each entry: path, type, example value, doc string. Drives
+                  autocomplete in any editor.
+                </span>,
+              ],
+              [
+                <code key="comp" className="font-mono text-foreground">
+                  POST /api/idm-complete
+                </code>,
+                <span key="comp-d">
+                  Cursor-position autocomplete: given the current formula and caret offset,
+                  return ranked completions (function names with arity hints, field paths
+                  scoped by what&rsquo;s already typed). Server-side; works in any editor
+                  including LSP-driven IDEs.
+                </span>,
+              ],
+              [
+                <code key="snap" className="font-mono text-foreground">
+                  POST /api/idm-snapshots
+                </code>,
+                <span key="snap-d">
+                  Server-stored named snapshots of{" "}
+                  <code className="font-mono">{"{ formula, sampleData, label }"}</code>. Returns
+                  a short id (<code className="font-mono">/s/abc123</code>). For when the
+                  hash-fragment share URL gets too long for Slack/email previews.
+                </span>,
+              ],
+              [
+                <code key="health" className="font-mono text-foreground">
+                  GET /api/health
+                </code>,
+                <span key="health-d">
+                  Plain status endpoint. Lets downstream apps surface a banner when the
+                  toolchain is degraded instead of silently falling back without telling
+                  users.
+                </span>,
+              ],
+            ]}
+          />
+
+          <p className="text-muted-foreground">
+            <strong>Stretch ideas:</strong> a TypeScript SDK (
+            <code className="font-mono">@formulastudio/idm</code>) wrapping the JSON APIs with
+            typed responses; a VS Code extension using{" "}
+            <code className="font-mono">/api/idm-validate</code> +{" "}
+            <code className="font-mono">/api/idm-complete</code> over LSP; an MCP server so any
+            agent can compile/validate formulas directly.
+          </p>
+        </section>
+
+        <section className="space-y-3">
           <Heading>Credits</Heading>
           <p>
             IDM language, parser/validator/formatter/test-runner, and sample data:{" "}
@@ -354,7 +648,7 @@ function Feature({
   );
 }
 
-function Table({ rows }: { rows: Array<[string, React.ReactNode]> }) {
+function Table({ rows }: { rows: Array<[React.ReactNode, React.ReactNode]> }) {
   return (
     <div className="border border-border">
       <dl className="divide-y divide-border">

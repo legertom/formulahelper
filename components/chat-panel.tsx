@@ -8,6 +8,7 @@ import {
   type ToolUIPart,
 } from "ai";
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import { parseFormula } from "@/lib/idm/parser";
 
 import {
   Conversation,
@@ -55,8 +56,14 @@ type Props = {
   onFormulaSuggested: (formula: string) => void;
 };
 
+type SyncStatus =
+  | { kind: "idle" }
+  | { kind: "synced"; formula: string }
+  | { kind: "rejected"; formula: string; reason: string };
+
 export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
   const [input, setInput] = useState("");
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ kind: "idle" });
   const formulaRef = useRef(formula);
   formulaRef.current = formula;
   const lastSuggested = useRef<string | null>(null);
@@ -84,11 +91,45 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
       .map((p) => (p as { text: string }).text)
       .join("\n");
     const found = extractFormulaFromText(text);
-    if (found && found !== lastSuggested.current) {
-      lastSuggested.current = found;
-      onFormulaSuggested(found);
+    if (!found || found === lastSuggested.current) return;
+    lastSuggested.current = found;
+
+    // Reject parens / invalid IDM before pushing into the editor
+    const stripped = found.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+    if (stripped.includes("(") || stripped.includes(")")) {
+      setSyncStatus({
+        kind: "rejected",
+        formula: found,
+        reason: "contains parentheses (invalid IDM)",
+      });
+      return;
     }
+    if (stripped.includes(",")) {
+      setSyncStatus({
+        kind: "rejected",
+        formula: found,
+        reason: "contains commas (invalid IDM)",
+      });
+      return;
+    }
+    const parsed = parseFormula(found);
+    if (parsed.errors.length > 0) {
+      setSyncStatus({
+        kind: "rejected",
+        formula: found,
+        reason: parsed.errors[0].message,
+      });
+      return;
+    }
+    setSyncStatus({ kind: "synced", formula: found });
+    onFormulaSuggested(found);
   }, [messages, onFormulaSuggested]);
+
+  function applyAnyway() {
+    if (syncStatus.kind !== "rejected") return;
+    onFormulaSuggested(syncStatus.formula);
+    setSyncStatus({ kind: "synced", formula: syncStatus.formula });
+  }
 
   const busy = status === "submitted" || status === "streaming";
   const dotColor =
@@ -143,6 +184,24 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
           {error && (
             <div className="text-[11px] font-mono p-2 border border-[var(--destructive)] text-[var(--destructive)] bg-[var(--destructive)]/10">
               {error.message}
+            </div>
+          )}
+          {syncStatus.kind === "rejected" && (
+            <div className="text-[11px] p-2 border border-[var(--amber)]/60 text-foreground bg-[var(--amber)]/10 flex items-start gap-2">
+              <span className="text-[var(--amber)] shrink-0 mt-0.5">⚠</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium mb-0.5">
+                  Assistant emitted invalid IDM — not synced to the editor
+                </div>
+                <div className="text-muted-foreground mb-1.5">{syncStatus.reason}</div>
+                <button
+                  type="button"
+                  onClick={applyAnyway}
+                  className="h-5 px-2 text-[10.5px] border border-foreground/30 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground transition rounded-sm"
+                >
+                  apply anyway
+                </button>
+              </div>
             </div>
           )}
         </ConversationContent>

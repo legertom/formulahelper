@@ -1,20 +1,32 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, isToolUIPart } from "ai";
+import {
+  DefaultChatTransport,
+  isToolUIPart,
+  type DynamicToolUIPart,
+  type ToolUIPart,
+} from "ai";
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
-export type ChatPanelHandle = {
-  send: (text: string) => void;
-};
-
-type Props = {
-  ref?: Ref<ChatPanelHandle>;
-  formula: string;
-  onFormulaSuggested: (formula: string) => void;
-};
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
 
 const FENCE = /```(?:handlebars|hbs|idm)?\n([\s\S]*?)```/g;
 const BRACE = /\{\{[\s\S]+?\}\}/;
@@ -29,9 +41,26 @@ function extractFormulaFromText(text: string): string | null {
   return last;
 }
 
+const TOOL_LABEL: Record<string, string> = {
+  "tool-validate_formula": "Validate formula",
+  "tool-lint_formula": "Lint formula",
+  "tool-format_formula": "Format formula",
+  "tool-test_formula": "Run tests",
+  "tool-compile_group_rules": "Compile group rules",
+};
+
+export type ChatPanelHandle = {
+  send: (text: string) => void;
+};
+
+type Props = {
+  ref?: Ref<ChatPanelHandle>;
+  formula: string;
+  onFormulaSuggested: (formula: string) => void;
+};
+
 export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
   const [input, setInput] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
   const formulaRef = useRef(formula);
   formulaRef.current = formula;
   const lastSuggested = useRef<string | null>(null);
@@ -50,10 +79,6 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
       if (text.trim()) sendMessage({ text });
     },
   }));
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
 
   useEffect(() => {
     const last = messages[messages.length - 1];
@@ -82,62 +107,41 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
         </span>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-auto p-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="text-sm text-zinc-500 space-y-2">
-            <p className="font-medium text-zinc-700 dark:text-zinc-300">Try one of these:</p>
-            <ul className="space-y-1.5 text-xs">
-              <li className="border border-zinc-200 dark:border-zinc-800 rounded-md p-2 bg-zinc-50 dark:bg-zinc-900">
-                &ldquo;Build a formula that returns &lsquo;Senior&rsquo; if grad year is 2026,
-                &lsquo;Junior&rsquo; if 2027, otherwise &lsquo;Other&rsquo;.&rdquo;
-              </li>
-              <li className="border border-zinc-200 dark:border-zinc-800 rounded-md p-2 bg-zinc-50 dark:bg-zinc-900">
-                &ldquo;Group A is school_name=A AND sis_id starts with 2; Group B is school_name=B.
-                Compile to IDM.&rdquo;
-              </li>
-              <li className="border border-zinc-200 dark:border-zinc-800 rounded-md p-2 bg-zinc-50 dark:bg-zinc-900">
-                Paste a formula in the editor, click <em>Explain in plain English</em>.
-              </li>
-            </ul>
-          </div>
-        )}
+      <Conversation className="flex-1">
+        <ConversationContent>
+          {messages.length === 0 && (
+            <ConversationEmptyState
+              title="Ask anything about IDM formulas"
+              description={
+                "Try: “Senior if grad year is 2026, Junior if 2027, otherwise Other.” Or paste a formula in the editor and click Explain."
+              }
+            />
+          )}
 
-        {messages.map((m) => (
-          <div key={m.id} className="space-y-1.5">
-            <div
-              className={`text-xs font-semibold uppercase tracking-wider ${
-                m.role === "user" ? "text-blue-600" : "text-emerald-600"
-              }`}
-            >
-              {m.role === "user" ? "You" : "Assistant"}
+          {messages.map((m) => (
+            <Message key={m.id} from={m.role}>
+              <MessageContent>
+                {m.parts.map((part, i) => {
+                  if (part.type === "text") {
+                    return <MessageResponse key={i}>{part.text}</MessageResponse>;
+                  }
+                  if (isToolUIPart(part)) {
+                    return <ToolPartView key={part.toolCallId || i} part={part} />;
+                  }
+                  return null;
+                })}
+              </MessageContent>
+            </Message>
+          ))}
+
+          {error && (
+            <div className="text-xs rounded-md p-2 bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/40 dark:border-red-900 dark:text-red-300">
+              {error.message}
             </div>
-            {m.parts.map((part, i) => {
-              if (part.type === "text") {
-                return (
-                  <div
-                    key={i}
-                    className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed"
-                  >
-                    <Markdown>{part.text}</Markdown>
-                  </div>
-                );
-              }
-              if (isToolUIPart(part)) {
-                return (
-                  <ToolPartView key={part.toolCallId || i} part={part as ToolUIPart} />
-                );
-              }
-              return null;
-            })}
-          </div>
-        ))}
-
-        {error && (
-          <div className="text-xs rounded-md p-2 bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/40 dark:border-red-900 dark:text-red-300">
-            {error.message}
-          </div>
-        )}
-      </div>
+          )}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
 
       <form
         onSubmit={(e) => {
@@ -178,135 +182,37 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
   );
 }
 
-function Markdown({ children }: { children: string }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        h1: (props) => <h1 className="text-base font-semibold mt-3 mb-1.5" {...props} />,
-        h2: (props) => <h2 className="text-sm font-semibold mt-3 mb-1.5" {...props} />,
-        h3: (props) => <h3 className="text-sm font-semibold mt-2.5 mb-1" {...props} />,
-        h4: (props) => <h4 className="text-xs font-semibold uppercase tracking-wider mt-2 mb-1 text-zinc-600 dark:text-zinc-400" {...props} />,
-        p: (props) => <p className="my-1.5" {...props} />,
-        ul: (props) => <ul className="list-disc pl-5 my-1.5 space-y-1" {...props} />,
-        ol: (props) => <ol className="list-decimal pl-5 my-1.5 space-y-1" {...props} />,
-        li: (props) => <li className="leading-snug" {...props} />,
-        strong: (props) => <strong className="font-semibold text-zinc-900 dark:text-zinc-50" {...props} />,
-        em: (props) => <em className="italic" {...props} />,
-        a: (props) => (
-          <a className="underline decoration-dotted text-blue-600 dark:text-blue-400" target="_blank" rel="noreferrer" {...props} />
-        ),
-        blockquote: (props) => (
-          <blockquote
-            className="my-2 pl-3 border-l-2 border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 italic"
-            {...props}
-          />
-        ),
-        hr: () => <hr className="my-3 border-zinc-200 dark:border-zinc-800" />,
-        code: (props) => {
-          const { className, children, ...rest } = props as {
-            className?: string;
-            children?: React.ReactNode;
-          };
-          const isBlock = className && className.startsWith("language-");
-          if (isBlock) {
-            return (
-              <code className={`${className ?? ""} font-mono`} {...rest}>
-                {children}
-              </code>
-            );
-          }
-          return (
-            <code
-              className="font-mono text-[0.85em] px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
-              {...rest}
-            >
-              {children}
-            </code>
-          );
-        },
-        pre: (props) => (
-          <pre
-            className="my-2 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 text-xs overflow-x-auto whitespace-pre"
-            {...props}
-          />
-        ),
-        table: (props) => (
-          <div className="my-2 overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
-            <table className="w-full text-xs" {...props} />
-          </div>
-        ),
-        thead: (props) => <thead className="bg-zinc-50 dark:bg-zinc-900" {...props} />,
-        th: (props) => (
-          <th
-            className="text-left font-semibold px-3 py-1.5 border-b border-zinc-200 dark:border-zinc-800"
-            {...props}
-          />
-        ),
-        td: (props) => (
-          <td
-            className="px-3 py-1.5 border-b border-zinc-200/60 dark:border-zinc-800/60 align-top"
-            {...props}
-          />
-        ),
-      }}
-    >
-      {children}
-    </ReactMarkdown>
-  );
-}
-
-type ToolUIPart = {
-  type: `tool-${string}`;
-  toolCallId: string;
-  state: "input-streaming" | "input-available" | "output-available" | "output-error";
-  input?: unknown;
-  output?: unknown;
-  errorText?: string;
-};
-
-function ToolPartView({ part }: { part: ToolUIPart }) {
-  const toolName = part.type.replace(/^tool-/, "");
-  const label =
-    {
-      validate_formula: "Validating",
-      lint_formula: "Linting",
-      format_formula: "Formatting",
-      test_formula: "Running tests",
-      compile_group_rules: "Compiling group rules",
-    }[toolName] || toolName;
-
-  const stateLabel = {
-    "input-streaming": "preparing…",
-    "input-available": "running…",
-    "output-available": "done",
-    "output-error": "error",
-  }[part.state];
+function ToolPartView({ part }: { part: ToolUIPart | DynamicToolUIPart }) {
+  const isDynamic = part.type === "dynamic-tool";
+  const friendly = isDynamic
+    ? part.toolName
+    : TOOL_LABEL[part.type] ?? part.type.replace(/^tool-/, "");
+  const hasInput = part.state === "input-available" || part.state === "output-available";
+  const hasOutput = part.state === "output-available";
+  const hasError = part.state === "output-error";
 
   return (
-    <details className="text-xs rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 group">
-      <summary className="cursor-pointer px-2.5 py-1.5 select-none flex items-center justify-between">
-        <span>
-          <span className="font-mono text-zinc-700 dark:text-zinc-300">{label}</span>
-          <span className="ml-2 text-zinc-500">{stateLabel}</span>
-        </span>
-        <span className="text-zinc-400 group-open:rotate-90 transition">›</span>
-      </summary>
-      <div className="px-2.5 pb-2 space-y-1.5">
-        {part.state === "input-available" || part.state === "output-available" ? (
-          <pre className="font-mono text-[11px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-2 overflow-x-auto whitespace-pre-wrap">
-            {JSON.stringify(part.input, null, 2)}
-          </pre>
-        ) : null}
-        {part.state === "output-available" ? (
-          <pre className="font-mono text-[11px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded p-2 overflow-x-auto whitespace-pre-wrap">
-            {JSON.stringify(part.output, null, 2)}
-          </pre>
-        ) : null}
-        {part.state === "output-error" ? (
-          <div className="text-red-600 dark:text-red-400">{part.errorText}</div>
-        ) : null}
-      </div>
-    </details>
+    <Tool defaultOpen={hasError}>
+      {isDynamic ? (
+        <ToolHeader type="dynamic-tool" state={part.state} toolName={part.toolName} title={friendly} />
+      ) : (
+        <ToolHeader type={part.type} state={part.state} title={friendly} />
+      )}
+      <ToolContent>
+        {hasInput && <ToolInput input={part.input} />}
+        {(hasOutput || hasError) && (
+          <ToolOutput
+            output={
+              hasOutput ? (
+                <pre className="whitespace-pre-wrap break-words text-xs">
+                  {JSON.stringify(part.output, null, 2)}
+                </pre>
+              ) : undefined
+            }
+            errorText={hasError ? part.errorText : undefined}
+          />
+        )}
+      </ToolContent>
+    </Tool>
   );
 }

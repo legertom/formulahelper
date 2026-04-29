@@ -357,143 +357,110 @@ export default function AboutPage() {
         </section>
 
         <section className="space-y-3">
-          <Heading>Note for builders — LLMs will break your DSL</Heading>
+          <Heading>Notes for builders — working with LLMs and a small DSL</Heading>
           <p>
-            If you&rsquo;re building anything LLM-powered on top of IDM (or any
-            non-mainstream syntax), this is the single most important thing to internalize:
+            We use <code className="font-mono">claude-sonnet-4.6</code> via the Vercel AI
+            Gateway. The model has the full IDM spec in its system prompt and a set of
+            deterministic tools (validate, format, test) to call. Even so, when generating
+            formulas it sometimes produces output that doesn&rsquo;t conform to IDM&rsquo;s
+            rules. This section documents the patterns we observed and the layered approach
+            we use to handle them.
           </p>
-          <div className="border border-[var(--amber)]/60 bg-[var(--amber)]/10 px-4 py-3">
-            <p className="font-semibold text-foreground mb-1">
-              The model has read more JavaScript than IDM. It will regress to the mean.
-            </p>
-            <p className="text-muted-foreground">
-              Even a frontier model with the full spec in its system prompt will, under load,
-              quietly write{" "}
-              <code className="font-mono">
-                {"{{if (greater gpa \"3.5\") \"honors\" \"regular\"}}"}
-              </code>{" "}
-              when it should write{" "}
-              <code className="font-mono">
-                {"{{if greater gpa \"3.5\" \"honors\" \"regular\"}}"}
-              </code>
-              . It saw a million function-call expressions during pre-training and 28 IDM
-              formulas — guess which pattern wins on a fuzzy day.
-            </p>
-          </div>
 
-          <p>
-            Specifically, here are the failure modes I observed against{" "}
-            <code className="font-mono">claude-sonnet-4.6</code> while building this app — they
-            generalize to any LLM and any prefix/postfix DSL:
-          </p>
-          <ul className="list-disc pl-5 space-y-1.5 text-muted-foreground">
+          <h3 className="text-[13px] font-semibold tracking-tight text-foreground pt-3 pb-1 border-b border-border flex items-center gap-2">
+            <span className="text-[var(--lime)] text-[11px]">▸</span>
+            Common failure patterns
+          </h3>
+          <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
             <li>
-              <strong className="text-foreground">Parentheses for grouping</strong> — the model
-              wraps sub-expressions in <code className="font-mono">(...)</code> because that&rsquo;s
-              what feels like &ldquo;structured code.&rdquo; IDM has no parens; argument
-              position is the only grouping mechanism. <em>This was the actual bug that prompted
-              this section.</em>
+              <strong className="text-foreground">Parentheses for grouping.</strong> IDM has no
+              parens; argument position alone provides grouping. The model occasionally adds
+              them anyway.
             </li>
             <li>
-              <strong className="text-foreground">Commas between args</strong> — same root
-              cause. Whitespace separates arguments in IDM; commas are syntax errors.
+              <strong className="text-foreground">Commas between arguments.</strong> Arguments
+              are whitespace-separated in IDM.
             </li>
             <li>
-              <strong className="text-foreground">Infix operators</strong> —{" "}
-              <code className="font-mono">a {">"} b</code> instead of{" "}
-              <code className="font-mono">greater a b</code>.
+              <strong className="text-foreground">Infix operators</strong>{" "}
+              (<code className="font-mono">a {">"} b</code>) or function-call syntax{" "}
+              (<code className="font-mono">greater(a, b)</code>) instead of prefix notation.
             </li>
             <li>
-              <strong className="text-foreground">Function call style</strong> —{" "}
-              <code className="font-mono">greater(a, b)</code> instead of prefix.
+              <strong className="text-foreground">Empty fallback in <code>if</code>.</strong>{" "}
+              The third argument is sometimes omitted or set to{" "}
+              <code className="font-mono">&quot;&quot;</code>. <code>if</code> is fixed-arity
+              3; an explicit fallback like <code className="font-mono">&quot;uncategorized&quot;</code>{" "}
+              is preferred.
             </li>
             <li>
-              <strong className="text-foreground">Empty fallback in `if`</strong> — the model
-              omits the third arg or passes <code className="font-mono">&quot;&quot;</code>{" "}
-              when the user didn&rsquo;t specify one. IDM&rsquo;s <code>if</code> is fixed
-              arity-3; an unspecified fallback should be an explicit{" "}
-              <code className="font-mono">&quot;uncategorized&quot;</code> or similar.
+              <strong className="text-foreground">Wrong arity on uncommon functions</strong>{" "}
+              (e.g. <code className="font-mono">substr</code> with two arguments instead of three).
             </li>
             <li>
-              <strong className="text-foreground">Wrong arity on uncommon functions</strong> —{" "}
-              <code className="font-mono">substr</code> takes 3 args (text, start, length); the
-              model occasionally passes 2.
-            </li>
-            <li>
-              <strong className="text-foreground">Aliases drifting back to canonical</strong> —
-              even though we explicitly say &ldquo;use <code>length</code>, not{" "}
-              <code>len</code>,&rdquo; this still drifts under enough context pressure.
+              <strong className="text-foreground">Alias drift.</strong> Use of{" "}
+              <code className="font-mono">len</code>/<code className="font-mono">equal</code>{" "}
+              instead of canonical <code className="font-mono">length</code>/<code className="font-mono">equals</code>.
             </li>
           </ul>
 
           <h3 className="text-[13px] font-semibold tracking-tight text-foreground pt-3 pb-1 border-b border-border flex items-center gap-2">
             <span className="text-[var(--lime)] text-[11px]">▸</span>
-            What works (defense in depth)
+            Layered mitigations
           </h3>
           <p>
-            One layer is never enough. We use four, in this order:
+            We rely on four layers, each catching what the previous one missed.
           </p>
           <ol className="list-decimal pl-5 space-y-2 text-muted-foreground">
             <li>
-              <strong className="text-foreground">Front-load the system prompt</strong> with a
-              CRITICAL RULES callout containing wrong-vs-right pairs. Bullets buried below the
-              function catalog get ignored under context pressure. The first 200 tokens of
-              the system prompt do the most work — see{" "}
-              <code className="font-mono">lib/idm/spec.ts</code>.
+              <strong className="text-foreground">A front-loaded system prompt.</strong> The
+              IDM rules and a wrong-vs-right pair appear at the top of the prompt — see{" "}
+              <code className="font-mono">lib/idm/spec.ts</code>. Rules listed earlier in the
+              prompt are followed more reliably than rules buried below a long catalog.
             </li>
             <li>
-              <strong className="text-foreground">Force tool calls</strong>. The chat agent has{" "}
-              <code className="font-mono">validate_formula</code> as a tool; the prompt tells
-              it to call validate after every draft. The deterministic validator catches
-              what the prompt missed.
+              <strong className="text-foreground">Tool calls for verification.</strong> The
+              chat agent is instructed to call <code className="font-mono">validate_formula</code>{" "}
+              after every draft. The deterministic validator catches what the prompt did not.
             </li>
             <li>
-              <strong className="text-foreground">Client-side guards before auto-apply</strong>.
-              When the assistant emits a fenced{" "}
-              <code className="font-mono">handlebars</code> block, the chat panel runs our
-              local parser{" "}
-              <em>before</em> pushing it into the editor. If the parser finds parens, commas,
-              or syntax errors, the sync is rejected and an amber banner appears with an
-              &ldquo;apply anyway&rdquo; escape hatch. See{" "}
+              <strong className="text-foreground">A client-side parse before auto-apply.</strong>{" "}
+              When the assistant emits a fenced <code className="font-mono">handlebars</code>{" "}
+              block, the chat panel parses it locally before syncing it into the editor. If
+              parsing fails or the formula contains parens/commas, the sync is held back and
+              an &ldquo;apply anyway&rdquo; escape hatch is shown. See{" "}
               <code className="font-mono">components/chat-panel.tsx</code>.
             </li>
             <li>
-              <strong className="text-foreground">Always preserve undo</strong>. Before any
-              automated action that mutates the user&rsquo;s formula (chat suggestion, format,
-              example load), push the prior version onto the history stack. Surprises become
-              recoverable instead of catastrophic.
+              <strong className="text-foreground">Reversible state.</strong> Before any
+              automated action mutates the user&rsquo;s formula (chat suggestion, format
+              button, example load), the prior version is pushed onto the history stack so it
+              can be restored from the history popover.
             </li>
           </ol>
 
           <h3 className="text-[13px] font-semibold tracking-tight text-foreground pt-3 pb-1 border-b border-border flex items-center gap-2">
             <span className="text-[var(--lime)] text-[11px]">▸</span>
-            What doesn&rsquo;t work
+            Approaches we considered but didn&rsquo;t use
           </h3>
           <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
             <li>
-              <strong className="text-foreground">Fine-tuning</strong> — overkill for syntactic
-              constraints. The signal is short and well-specified; you don&rsquo;t need new
-              weights, you need a clearer prompt and a safety net.
+              <strong className="text-foreground">Fine-tuning.</strong> Useful when prompt
+              engineering plateaus, but the signal here is short and well-specified — a
+              sharper prompt and a parser-based guard cover the same ground without the
+              ongoing data and training overhead.
             </li>
             <li>
-              <strong className="text-foreground">A bigger model</strong> — Opus instead of
-              Sonnet, GPT-5 instead of GPT-4. Marginal improvement, same failure mode at scale.
+              <strong className="text-foreground">Post-hoc text cleanup</strong> (e.g. stripping
+              parens with regex). The shape of an invalid formula isn&rsquo;t reliably
+              recoverable; the safer path is to reject and re-prompt.
             </li>
             <li>
-              <strong className="text-foreground">Trusting the model&rsquo;s self-reported
-              confidence</strong>. It will say &ldquo;here&rsquo;s a valid IDM formula:&rdquo;
-              and emit invalid IDM in the same breath. Verify, don&rsquo;t trust.
-            </li>
-            <li>
-              <strong className="text-foreground">Post-hoc cleanup heuristics</strong> like
-              &ldquo;strip the parens.&rdquo; You can&rsquo;t reliably undo a wrong AST shape
-              with regex. Reject and re-roll.
+              <strong className="text-foreground">Treating model self-reports as truth.</strong>{" "}
+              We don&rsquo;t rely on the assistant&rsquo;s claim that a formula is valid; we
+              parse it ourselves before applying.
             </li>
           </ul>
-          <p className="text-muted-foreground italic">
-            TL;DR — write your system prompt like the model is hostile, and parse its output
-            like you would untrusted user input. It is, kind of.
-          </p>
         </section>
 
         <section className="space-y-3">

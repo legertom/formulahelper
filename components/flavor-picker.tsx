@@ -52,7 +52,7 @@ export function FlavorPicker() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-9 z-50 w-[300px] bg-card border border-border shadow-xl overflow-hidden rounded-sm"
+          className="absolute right-0 top-9 z-50 w-[300px] bg-popover border-2 border-foreground/40 shadow-2xl shadow-black/50 dark:shadow-black overflow-hidden rounded-sm ring-1 ring-foreground/10"
         >
           <div className="px-3 h-8 flex items-center justify-between border-b border-border bg-muted/40 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             <span>Theme flavor</span>

@@ -1,0 +1,91 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - link "ƒ formula-helper" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e5]: ƒ
+        - generic [ref=e6]: formula-helper
+      - generic [ref=e7]: │
+      - generic [ref=e8]: idm studio
+      - generic [ref=e9]: │
+      - generic [ref=e10]: v0.4 · ai-sdk · gateway
+      - generic [ref=e11]:
+        - link "studio ↗" [ref=e12] [cursor=pointer]:
+          - /url: https://formulastudio.net
+        - link "github" [ref=e13] [cursor=pointer]:
+          - /url: https://github.com/legertom/formulahelper
+        - link "about" [ref=e14] [cursor=pointer]:
+          - /url: /about
+        - generic [ref=e15]: │
+        - button "Pick theme flavor" [ref=e17]:
+          - generic [ref=e19]: Terminal
+          - img [ref=e20]
+        - button "Toggle theme" [ref=e22]
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - generic [ref=e27]:
+          - generic [ref=e28]:
+            - generic [ref=e29]: ▸
+            - generic [ref=e30]: formula.idm
+            - generic [ref=e31]: │
+            - generic [ref=e32]: 1L
+            - generic [ref=e33]: ·
+            - generic [ref=e34]: 131c
+            - generic [ref=e35]:
+              - button "↕ format" [ref=e36]
+              - button "→ condense" [ref=e37]
+              - button "explain →" [ref=e38]
+              - button "share" [ref=e39]
+              - button "history · 0" [ref=e41]
+              - button "Clear" [ref=e42]: ✕
+          - generic [ref=e45]:
+            - generic: "{{if equals school.sis_id \"RUSD-LMS-042\" \"Sweet Valley Middle\" if equals school.sis_id \"RUSD-LMS-043\" \"Sweet Valley High\" \"Other\"}}."
+            - 'textbox "{{if equals school_name \"A\" \"Group A\" \"uncategorized\"}}" [ref=e46]': "{{if equals school.sis_id \"RUSD-LMS-042\" \"Sweet Valley Middle\" if equals school.sis_id \"RUSD-LMS-043\" \"Sweet Valley High\" \"Other\"}}"
+          - generic [ref=e47]:
+            - generic [ref=e48]: "{{ fn \"str\" 123 field.path }}"
+            - generic [ref=e49]: prefix · no parens
+        - generic [ref=e51]:
+          - generic [ref=e53]: idle
+          - generic [ref=e54]: │
+          - generic [ref=e56]: type a formula…
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - button "data" [ref=e59]: data
+            - button "fields" [ref=e61]
+            - button "examples" [ref=e62]
+            - button "trace" [ref=e63]
+            - generic [ref=e64]: 6 personas · click field to insert
+          - generic [ref=e66]:
+            - generic [ref=e67]:
+              - generic [ref=e69]: parsed
+              - generic [ref=e70]: │
+              - combobox [ref=e71]:
+                - option "persona…" [disabled]
+                - option "Maria · grade 7" [selected]
+                - option "Jamal · grade 12 senior"
+                - option "Amira · IEP active"
+                - option "Thompson · teacher"
+                - option "Patel · staff (custodian)"
+                - option "Edge · missing fields"
+                - option "— custom —"
+              - generic [ref=e72]:
+                - button "↓ download" [ref=e73]
+                - button "↑ upload" [ref=e74]
+            - textbox [ref=e75]: "{ \"_id\": \"usr_7f3a9b2c1d4e5f6a\", \"district\": \"dist_4a8b2c1d3e5f\", \"name\": { \"first\": \"Maria\", \"last\": \"Santos\", \"middle\": \"Elena\" }, \"email\": \"maria.santos@sweetvalley.k12.edu\", \"school_name\": \"Sweet Valley Middle\", \"student\": { \"_id\": \"stu_7f3a9b2c1d4e5f6a\", \"grade\": \"7\", \"graduation_year\": \"2027\", \"sis_id\": \"STU-847291\", \"student_number\": \"10742\", \"home_language\": \"Spanish\", \"home_language_code\": \"ES\", \"gender\": \"Female\", \"race\": \"Hispanic or Latino\", \"iep_status\": false, \"ell_status\": \"Active\", \"frl_status\": \"Reduced\", \"school\": \"sch_4a8b2c1d\", \"state_id\": \"NY-2024-00384\", \"unweighted_gpa\": \"3.45\", \"weighted_gpa\": \"3.67\", \"location\": { \"city\": \"Sweet Valley\", \"state\": \"NY\", \"zip\": \"10002\" } }, \"teacher\": { \"sis_id\": \"TCH-2847\", \"title\": \"Ms.\", \"school\": \"sch_4a8b2c1d\" }, \"staff\": { \"sis_id\": \"ADM-0394\", \"title\": \"Deputy Head\", \"department\": \"Administration\", \"roles\": [ \"Administrator\", \"IT Coordinator\" ] }, \"school\": { \"name\": \"Sweet Valley Middle\", \"sis_id\": \"RUSD-LMS-042\", \"state_id\": \"NY-SCH-2024-042\", \"school_number\": \"042\", \"high_grade\": \"8\", \"low_grade\": \"6\" } }"
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - generic [ref=e79]: ▸
+          - generic [ref=e80]: assistant
+          - generic [ref=e81]: │
+          - generic [ref=e82]: claude-sonnet-4.6
+          - generic [ref=e85]: ready
+        - log [ref=e86]:
+          - generic [ref=e90]:
+            - heading "Ask anything about IDM formulas" [level=3] [ref=e91]
+            - paragraph [ref=e92]: “Senior if grad year is 2026, Junior if 2027, otherwise Other.” Or paste a formula in the editor and click explain.
+        - generic [ref=e94]:
+          - generic [ref=e95]: $
+          - textbox "describe a rule, paste a formula, ask why…" [ref=e96]
+          - button "send ↵" [disabled] [ref=e98]
+  - button "Open Next.js Dev Tools" [ref=e104] [cursor=pointer]:
+    - img [ref=e105]

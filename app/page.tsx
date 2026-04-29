@@ -166,7 +166,7 @@ export default function Page() {
       <div className="absolute inset-0 bg-canvas-grid pointer-events-none" />
 
       <header
-        className={`relative shrink-0 flex items-center gap-3 ${
+        className={`relative shrink-0 z-50 flex items-center gap-3 ${
           isSwiss
             ? "px-8 py-5 border-b border-foreground"
             : isEdtech

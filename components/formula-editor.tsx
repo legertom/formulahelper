@@ -1,12 +1,20 @@
 "use client";
 
-import { useId, type CSSProperties } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import { IDM_FN_BY_NAME } from "@/lib/idm/spec";
+import { HistoryPopover } from "@/components/history-popover";
+import type { HistoryEntry } from "@/lib/use-history";
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
   onAskExplain: () => void;
+  onFormatted: (formatted: string) => void;
+  onShare: () => Promise<void> | void;
+  shareLabel: string;
+  history: HistoryEntry[];
+  onRestoreHistory: (formula: string) => void;
+  onClearHistory: () => void;
 };
 
 const TOKEN_RE =
@@ -49,12 +57,48 @@ function tokenize(src: string): Token[] {
   return tokens;
 }
 
-export function FormulaEditor({ value, onChange, onAskExplain }: Props) {
+export function FormulaEditor({
+  value,
+  onChange,
+  onAskExplain,
+  onFormatted,
+  onShare,
+  shareLabel,
+  history,
+  onRestoreHistory,
+  onClearHistory,
+}: Props) {
   const id = useId();
+  const [formatting, setFormatting] = useState(false);
+  const [formatErr, setFormatErr] = useState<string | null>(null);
   const tokens = tokenize(value);
   const hasContent = value.trim().length > 0;
   const lineCount = Math.max(1, value.split("\n").length);
   const charCount = value.length;
+
+  async function format() {
+    if (!hasContent || formatting) return;
+    setFormatting(true);
+    setFormatErr(null);
+    try {
+      const res = await fetch("/api/idm-format", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formula: value, pretty: true, canonicalize: true }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.formula) {
+        setFormatErr(json?.error ?? `HTTP ${res.status}`);
+        return;
+      }
+      onFormatted(json.formula);
+    } catch (err) {
+      setFormatErr(err instanceof Error ? err.message : "format failed");
+    } finally {
+      setFormatting(false);
+      setTimeout(() => setFormatErr(null), 2500);
+    }
+  }
 
   const sharedStyle: CSSProperties = {
     fontFamily:
@@ -67,29 +111,57 @@ export function FormulaEditor({ value, onChange, onAskExplain }: Props) {
 
   return (
     <div className="flex flex-col h-full border border-border bg-card overflow-hidden">
-      <div className="flex items-center h-8 border-b border-border bg-muted/30 px-3 text-[11px]">
-        <span className="text-[var(--lime)] mr-2">▸</span>
-        <span className="text-muted-foreground">formula.idm</span>
-        <span className="mx-3 text-border">│</span>
-        <span className="text-muted-foreground/70">{lineCount}L</span>
-        <span className="mx-1.5 text-border">·</span>
-        <span className="text-muted-foreground/70">{charCount}c</span>
-        <span className="ml-auto flex items-center gap-1">
+      <div className="flex items-center h-9 border-b border-border bg-muted/40 px-3 text-[11px] gap-1.5">
+        <span className="text-[var(--lime)] mr-1">▸</span>
+        <span className="text-foreground/90">formula.idm</span>
+        <span className="text-border">│</span>
+        <span className="text-foreground/60 tabular-nums">{lineCount}L</span>
+        <span className="text-border">·</span>
+        <span className="text-foreground/60 tabular-nums">{charCount}c</span>
+        {formatErr && (
+          <>
+            <span className="text-border">│</span>
+            <span className="text-[var(--destructive)]">{formatErr}</span>
+          </>
+        )}
+        <span className="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={format}
+            disabled={!hasContent || formatting}
+            className="h-6 px-2 border border-foreground/25 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition rounded-sm"
+          >
+            {formatting ? "formatting…" : "format"}
+          </button>
           <button
             type="button"
             onClick={onAskExplain}
             disabled={!hasContent}
-            className="h-6 px-2 border border-border hover:bg-muted hover:text-foreground text-muted-foreground disabled:opacity-30 disabled:cursor-not-allowed transition"
+            className="h-6 px-2 border border-foreground/25 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition rounded-sm"
           >
             explain →
           </button>
           <button
             type="button"
+            onClick={() => onShare()}
+            className="h-6 px-2 border border-foreground/25 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground transition rounded-sm"
+          >
+            {shareLabel}
+          </button>
+          <HistoryPopover
+            entries={history}
+            currentFormula={value}
+            onRestore={onRestoreHistory}
+            onClear={onClearHistory}
+          />
+          <button
+            type="button"
             onClick={() => onChange("")}
             disabled={!hasContent}
-            className="h-6 px-2 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 transition"
+            aria-label="Clear"
+            className="h-6 w-6 grid place-items-center border border-foreground/25 bg-background hover:bg-[var(--destructive)]/15 hover:border-[var(--destructive)]/60 hover:text-[var(--destructive)] text-foreground/70 disabled:opacity-30 disabled:cursor-not-allowed transition rounded-sm"
           >
-            clear
+            ✕
           </button>
         </span>
       </div>

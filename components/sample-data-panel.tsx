@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SAMPLE_RECORD_JSON } from "@/lib/idm/sample-data";
+import { SAMPLE_PERSONAS } from "@/lib/idm/sample-data";
 
 type Props = {
   json: string;
   onChange: (json: string) => void;
+  activePersonaId: string | null;
+  onPersonaChange: (id: string) => void;
 };
 
-export function SampleDataPanel({ json, onChange }: Props) {
+export function SampleDataPanel({ json, onChange, activePersonaId, onPersonaChange }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,14 +33,21 @@ export function SampleDataPanel({ json, onChange }: Props) {
           {error ? "invalid" : "parsed"}
         </span>
         <span className="text-border">│</span>
-        <span className="text-muted-foreground">record.json</span>
-        <button
-          type="button"
-          onClick={() => onChange(SAMPLE_RECORD_JSON)}
-          className="ml-auto h-5 px-1.5 text-[10.5px] hover:bg-muted text-muted-foreground hover:text-foreground transition"
+        <select
+          value={activePersonaId ?? ""}
+          onChange={(e) => onPersonaChange(e.target.value)}
+          className="bg-background border border-foreground/25 hover:border-foreground/50 text-[11px] px-1.5 py-[2px] focus:outline-none focus:border-[var(--lime)] text-foreground rounded-sm"
         >
-          ↺ reset
-        </button>
+          <option value="" disabled>
+            persona…
+          </option>
+          {SAMPLE_PERSONAS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+          <option value="__custom">— custom —</option>
+        </select>
       </div>
       <textarea
         value={json}

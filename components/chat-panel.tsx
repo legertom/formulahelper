@@ -183,7 +183,7 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
               <button
                 type="button"
                 onClick={stop}
-                className="h-7 px-2.5 text-[11px] border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                className="h-7 px-2.5 text-[11px] border border-foreground/25 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground transition rounded-sm"
               >
                 stop
               </button>
@@ -191,7 +191,7 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className="h-7 px-2.5 text-[11px] bg-[var(--lime)] text-background hover:opacity-90 disabled:opacity-30 transition font-medium"
+                className="h-7 px-2.5 text-[11px] bg-[var(--lime)] text-background hover:opacity-90 disabled:opacity-30 transition font-medium rounded-sm"
               >
                 send ↵
               </button>

@@ -35,17 +35,28 @@ export function FlavorPicker() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Pick theme flavor"
-        className="h-7 px-2 flex items-center gap-1.5 border border-foreground/25 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground transition rounded-sm text-[11px]"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Theme flavor"
+        className="h-7 px-2.5 flex items-center gap-2 border border-foreground/25 bg-background hover:bg-foreground/10 hover:border-foreground/50 text-foreground transition rounded-sm text-[11px]"
       >
-        <Swatches swatches={current.swatches} />
+        <span
+          className="h-2 w-2 rounded-full border border-foreground/30 shrink-0"
+          style={{ backgroundColor: current.swatches[1] }}
+          aria-hidden
+        />
         <span className="hidden sm:inline">{current.label}</span>
-        <span className="text-foreground/50">▾</span>
+        <ChevronDown open={open} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-30 w-[280px] bg-card border border-border shadow-lg overflow-hidden rounded-sm">
-          <div className="px-3 h-7 flex items-center border-b border-border bg-muted/30 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            theme flavor
+        <div
+          role="menu"
+          className="absolute right-0 top-9 z-50 w-[300px] bg-card border border-border shadow-xl overflow-hidden rounded-sm"
+        >
+          <div className="px-3 h-8 flex items-center justify-between border-b border-border bg-muted/40 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            <span>Theme flavor</span>
+            <span className="text-foreground/40">{FLAVOR_LIST.length} options</span>
           </div>
           <ul>
             {FLAVOR_LIST.map((f) => {
@@ -89,14 +100,35 @@ export function FlavorPicker() {
 
 function Swatches({ swatches }: { swatches: [string, string, string] }) {
   return (
-    <span className="inline-flex shrink-0">
+    <span className="inline-flex shrink-0 gap-px">
       {swatches.map((c, i) => (
         <span
           key={i}
-          className="h-3 w-3 border border-foreground/30 -ml-[2px] first:ml-0 rounded-sm"
+          className="h-4 w-2 border border-foreground/30 first:rounded-l-sm last:rounded-r-sm"
           style={{ backgroundColor: c }}
         />
       ))}
     </span>
+  );
+}
+
+function ChevronDown({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      className={`text-foreground/60 transition-transform ${open ? "rotate-180" : ""}`}
+      aria-hidden
+    >
+      <path
+        d="M2 4l3 3 3-3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

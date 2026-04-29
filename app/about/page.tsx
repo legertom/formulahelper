@@ -52,6 +52,54 @@ export default function AboutPage() {
         </section>
 
         <section className="space-y-3">
+          <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+            What you can do here
+          </h2>
+          <ul className="list-disc pl-5 space-y-1.5">
+            <li>
+              <strong>Syntax-highlighted editor</strong> — function names, strings, numbers, and
+              dotted field paths are colored as you type.
+            </li>
+            <li>
+              <strong>Live result strip</strong> — every keystroke debounces a server-side
+              evaluation against the active sample record (350&nbsp;ms). You see the formula&rsquo;s
+              real output before pressing anything.
+            </li>
+            <li>
+              <strong>Sample data tab</strong> — a JSON editor pre-loaded with a realistic
+              student/teacher/staff/school record. Edit any field and the live result re-runs.
+              &ldquo;Reset to default&rdquo; restores the canned record.
+            </li>
+            <li>
+              <strong>Fields tab</strong> — every dotted field path extracted from the active
+              record, filterable, with a peek of the current value. Click to insert into the
+              formula.
+            </li>
+            <li>
+              <strong>Examples tab</strong> — five canned IDM patterns (school name mapping, staff
+              role classification, graduation cohort, startsWith, name concat) loadable in one
+              click.
+            </li>
+            <li>
+              <strong>AI assistant</strong> with five tool calls — validate, lint, format, test,
+              compile_group_rules — backed by{" "}
+              <a
+                href="https://formulastudio.net/api/instructions"
+                className="underline decoration-dotted"
+              >
+                formulastudio.net
+              </a>
+              . When the assistant emits a fenced <code className="font-mono">handlebars</code>{" "}
+              block, the editor auto-syncs to it.
+            </li>
+            <li>
+              <strong>Explain in plain English</strong> button on the editor — sends the current
+              formula to the assistant for a structured walkthrough.
+            </li>
+          </ul>
+        </section>
+
+        <section className="space-y-3">
           <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Stack</h2>
           <Table
             rows={[

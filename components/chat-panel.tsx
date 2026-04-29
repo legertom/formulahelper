@@ -96,15 +96,30 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
 
   const busy = status === "submitted" || status === "streaming";
 
+  const statusDot =
+    status === "streaming"
+      ? "bg-amber-500 animate-pulse"
+      : status === "submitted"
+        ? "bg-blue-500 animate-pulse"
+        : status === "error"
+          ? "bg-red-500"
+          : "bg-emerald-500";
+
   return (
-    <div className="flex flex-col h-full border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-950 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
-        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          AI assistant
-        </span>
-        <span className="text-xs text-zinc-400">
-          {status === "streaming" ? "thinking…" : status === "submitted" ? "sending…" : "ready"}
-        </span>
+    <div className="flex flex-col h-full rounded-xl border bg-card overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/40">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            AI assistant
+          </span>
+          <span className="text-[10px] text-muted-foreground/70">claude-sonnet-4.6</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className={`h-1.5 w-1.5 rounded-full ${statusDot}`} aria-hidden />
+          <span className="text-[11px] text-muted-foreground capitalize">
+            {status === "streaming" ? "thinking" : status === "submitted" ? "sending" : status}
+          </span>
+        </div>
       </div>
 
       <Conversation className="flex-1">
@@ -151,32 +166,46 @@ export function ChatPanel({ ref, formula, onFormulaSuggested }: Props) {
             setInput("");
           }
         }}
-        className="border-t border-zinc-200 dark:border-zinc-800 p-3 flex gap-2 bg-zinc-50 dark:bg-zinc-900"
+        className="border-t p-3 bg-muted/30"
       >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Describe a rule, paste a formula, or ask a question…"
-          className="flex-1 text-sm px-3 py-2 rounded-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-zinc-400"
-          disabled={busy}
-        />
-        {busy ? (
-          <button
-            type="button"
-            onClick={stop}
-            className="text-sm px-4 py-2 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:opacity-90"
-          >
-            Stop
-          </button>
-        ) : (
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className="text-sm px-4 py-2 rounded-md bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 disabled:opacity-40 hover:opacity-90"
-          >
-            Send
-          </button>
-        )}
+        <div className="flex gap-2 rounded-lg border bg-background focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-foreground/30 transition-shadow">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (input.trim() && !busy) {
+                  sendMessage({ text: input });
+                  setInput("");
+                }
+              }
+            }}
+            placeholder="Describe a rule, paste a formula, ask why…"
+            rows={1}
+            className="flex-1 min-h-[36px] max-h-32 text-sm px-3 py-2 bg-transparent resize-none focus:outline-none placeholder:text-muted-foreground/60"
+            disabled={busy}
+          />
+          <div className="p-1 flex items-end">
+            {busy ? (
+              <button
+                type="button"
+                onClick={stop}
+                className="h-8 px-3 text-xs rounded-md bg-muted text-foreground hover:bg-muted/80 transition"
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!input.trim()}
+                className="h-8 px-3 text-xs rounded-md bg-foreground text-background disabled:opacity-40 hover:opacity-90 transition font-medium"
+              >
+                Send ↵
+              </button>
+            )}
+          </div>
+        </div>
       </form>
     </div>
   );
